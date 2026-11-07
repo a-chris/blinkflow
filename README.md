@@ -46,6 +46,10 @@ Toolbar: **sample** (three worked examples), **open in** (VS Code, Cursor, Zed,
 Sublime, `file://`), **base** (the directory anchors are resolved against),
 **expand all** / **collapse all**.
 
+**share** copies a URL that opens this exact document — the doc travels in the
+fragment, deflate-compressed and base64url-encoded, so there is no server and no
+storage. Like `https://mermaid.live/edit#pako:…`, but ~1 KB for a full flow.
+
 **Tab** indents the current line or every selected line by one level (2 spaces),
 **Shift-Tab** outdents. Indentation is inserted as spaces, never a literal tab,
 because the parser rejects tabs — depth is the structure, so the two must agree.

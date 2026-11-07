@@ -4,6 +4,7 @@ import { closeNoteDialog, hideNotePopup, renderFlow, setAllPanels } from './lang
 import { createEditor } from './lang/editor';
 import { DEFAULT_EDITOR, displayRef, EDITORS, type EditorId } from './lang/anchors';
 import { DEFAULT_SAMPLE_ID, SAMPLES } from './samples';
+import { decodeShare, describeLength, encodeShare, readShareInput, shareUrl, ShareError } from './lang/share';
 
 const STORAGE = {
   doc: 'lightgram.doc',
@@ -27,6 +28,7 @@ function byId<T extends HTMLElement>(id: string): T {
 const sampleSelect = byId<HTMLSelectElement>('sample');
 const editorSelect = byId<HTMLSelectElement>('open-in');
 const baseInput = byId<HTMLInputElement>('base');
+const shareButton = byId<HTMLButtonElement>('share');
 const expandButton = byId<HTMLButtonElement>('expand');
 const collapseButton = byId<HTMLButtonElement>('collapse');
 const previewHost = byId<HTMLDivElement>('preview');
@@ -54,12 +56,42 @@ const initialSampleId =
   storedSample && SAMPLES.some((s) => s.id === storedSample) ? storedSample : DEFAULT_SAMPLE_ID;
 const initialSample = SAMPLES.find((s) => s.id === initialSampleId) ?? SAMPLES[0];
 
+/** The app path with any share payload stripped, so it can be cleaned off again. */
+function withoutPayload(pathname: string): string {
+  const stripped = pathname.replace(/\/(?:c1|p1)\.[^/]+\/?$/, '/');
+  return stripped === '' ? '/' : stripped;
+}
+
+const sharedPayload = readShareInput({ hash: window.location.hash, pathname: window.location.pathname });
+let sharedDoc: string | null = null;
+let shareError: string | null = null;
+let urlTracksDoc = sharedPayload !== null;
+
+if (sharedPayload !== null) {
+  try {
+    sharedDoc = await decodeShare(sharedPayload);
+  } catch (error) {
+    shareError = error instanceof ShareError ? error.message : 'this share link could not be read';
+    urlTracksDoc = false;
+  }
+}
+
 let editorId = (localStorage.getItem(STORAGE.editor) as EditorId | null) ?? DEFAULTS.editor;
 if (!EDITORS.some((e) => e.id === editorId)) editorId = DEFAULTS.editor;
 let baseDir = localStorage.getItem(STORAGE.baseDir) ?? DEFAULTS.baseDir;
-let currentDoc = localStorage.getItem(STORAGE.doc) ?? initialSample.doc;
+let currentDoc = sharedDoc ?? localStorage.getItem(STORAGE.doc) ?? initialSample.doc;
 
-sampleSelect.value = initialSample.id;
+if (sharedDoc !== null) localStorage.setItem(STORAGE.doc, sharedDoc);
+
+if (sharedDoc !== null) {
+  const option = document.createElement('option');
+  option.value = 'shared';
+  option.textContent = 'shared link';
+  sampleSelect.prepend(option);
+  sampleSelect.value = 'shared';
+} else {
+  sampleSelect.value = initialSample.id;
+}
 editorSelect.value = editorId;
 baseInput.value = baseDir;
 baseInput.placeholder = '/absolute/path/to/your/repo';
@@ -73,6 +105,12 @@ const view = createEditor({
   onChange: (doc) => {
     currentDoc = doc;
     localStorage.setItem(STORAGE.doc, doc);
+    // The URL described the document as it was when shared; once it changes,
+    // drop the stale payload so a reload cannot resurrect it.
+    if (urlTracksDoc) {
+      window.history.replaceState(null, '', withoutPayload(window.location.pathname));
+      urlTracksDoc = false;
+    }
     schedule();
   },
 });
@@ -125,8 +163,35 @@ function flowSummary(result: ParseResult): string {
   return parts.join(' · ');
 }
 
+/**
+ * The async clipboard API needs a focused document and can be refused; a hidden
+ * textarea plus execCommand still works in those cases.
+ */
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // fall through to the legacy path
+  }
+
+  try {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.readOnly = true;
+    area.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0';
+    document.body.appendChild(area);
+    area.select();
+    const copied = document.execCommand('copy');
+    area.remove();
+    return copied;
+  } catch {
+    return false;
+  }
+}
+
 let toastTimer: number | undefined;
-function toast(message: string): void {
+function toast(message: string, milliseconds = 2200): void {
   let node = document.querySelector<HTMLDivElement>('.lg-toast');
   if (!node) {
     node = document.createElement('div');
@@ -136,7 +201,7 @@ function toast(message: string): void {
   node.textContent = message;
   node.classList.add('is-visible');
   window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => node?.classList.remove('is-visible'), 2200);
+  toastTimer = window.setTimeout(() => node?.classList.remove('is-visible'), milliseconds);
 }
 
 function status(summary: string): void {
@@ -180,6 +245,26 @@ baseInput.addEventListener('input', () => {
   render();
 });
 
+shareButton.addEventListener('click', async () => {
+  shareButton.disabled = true;
+  try {
+    const payload = await encodeShare(view.state.doc.toString());
+    const url = shareUrl(window.location.origin, withoutPayload(window.location.pathname), payload);
+    window.history.replaceState(null, '', `#${payload}`);
+    urlTracksDoc = true;
+
+    const size = describeLength(url);
+    const long = url.length > 6000 ? ' · long link, some chat apps truncate it' : '';
+    const copied = await copyToClipboard(url);
+    if (copied) toast(`link copied · ${size}${long}`, long ? 5200 : 3000);
+    else toast(`copy blocked — the address bar holds the link · ${size}${long}`, 5200);
+  } catch {
+    toast('could not build a share link');
+  } finally {
+    shareButton.disabled = false;
+  }
+});
+
 expandButton.addEventListener('click', () => {
   setAllPanels(previewHost, true);
 });
@@ -208,3 +293,6 @@ gutter.addEventListener('pointerup', (event) => {
 });
 
 render();
+
+if (shareError !== null) toast(shareError, 5200);
+else if (sharedDoc !== null) toast('opened a shared diagram · this link is a snapshot', 3000);

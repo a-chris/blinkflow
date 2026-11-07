@@ -146,6 +146,23 @@ button:hover {
   color: var(--text);
 }
 
+button.is-primary {
+  color: var(--accent);
+  border-color: rgba(126, 231, 135, 0.34);
+  background: rgba(126, 231, 135, 0.09);
+}
+
+button.is-primary:hover {
+  color: #b6f5bd;
+  border-color: rgba(126, 231, 135, 0.6);
+  background: rgba(126, 231, 135, 0.16);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
 button:active {
   transform: translateY(0.5px);
 }

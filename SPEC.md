@@ -195,6 +195,31 @@ status bar names the first offending line.
    a document's job.
 5. **The file must read well unrendered.** That is why `-` stayed.
 
+## Share links
+
+The **share** button turns the current document into a URL and copies it. There
+is no server and no storage: the document is *inside* the link.
+
+```
+http://localhost:5174/#c1.hVTRbts2FH33V5w1A5Z0siIpdoFqiNGsU…
+```
+
+The payload is `deflate-raw` compressed and base64url encoded, prefixed with a
+version tag:
+
+| payload | meaning |
+|---|---|
+| `c1.<base64url>` | compressed, version 1 |
+| `p1.<base64url>` | plain UTF-8, version 1 — used when the browser has no `CompressionStream` |
+
+It lives in the **fragment**, not the path, because a fragment is never sent to
+the server, needs no rewrite rules to serve, and works on any static host. The
+path form is still accepted, so `http://localhost:5174/c1.…` opens the same
+document for links written by hand.
+
+Editing after sharing drops the payload from the URL, so a reload can never
+resurrect the snapshot you linked to.
+
 ## Playground
 
 `npm install && npm run dev` → http://localhost:5174
