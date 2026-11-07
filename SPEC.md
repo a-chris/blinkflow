@@ -147,7 +147,18 @@ should keep a literal leading `#` is written `\#`.
 A `#` before any component has nothing to attach to, so it describes the
 document and renders above the flow.
 
-Notes are single lines. Multi-line reasoning belongs in a panel.
+**Consecutive `#` lines are one note.** Write two lines and you get one icon and
+one dialog holding both:
+
+```
+- Checkout::Place.call(cart, user)
+  # 3 writes in one transaction
+  # never call this outside a request
+```
+
+Blank lines and any other line end the note, so two comments separated by a
+panel or a step stay separate notes. A bare `#` inside a run of note lines is a
+paragraph break: it becomes an empty line in the same note.
 
 ### Source anchors
 

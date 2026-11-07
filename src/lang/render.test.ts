@@ -214,6 +214,25 @@ describe('render', () => {
     expect(order).toEqual(['panel-toggle', 'note', 'anchor']);
   });
 
+  it('renders one chip for a multi-line note and shows every line', () => {
+    const doc = ['- step', '  # 3 writes in one transaction', '  # never call this outside a request'].join('\n');
+    const root = renderFlow(parse(doc), options);
+
+    expect(root.querySelectorAll('.lg-note')).toHaveLength(1);
+
+    const chip = root.querySelector<HTMLButtonElement>('.lg-note')!;
+    chip.dispatchEvent(new MouseEvent('mouseenter'));
+    const popup = document.querySelector<HTMLElement>('.lg-note-pop')!;
+    expect(popup.textContent).toBe('3 writes in one transaction\nnever call this outside a request');
+
+    chip.click();
+    const dialog = document.querySelector<HTMLDialogElement>('.lg-note-dialog')!;
+    expect(dialog.querySelector('.lg-note-text')?.textContent).toBe(
+      '3 writes in one transaction\nnever call this outside a request',
+    );
+    expect(dialog.querySelector('.lg-note-line')?.textContent).toBe('line 2');
+  });
+
   it('shows the note in a popup on hover', () => {
     const root = renderFlow(parse(['- step', '  # measured on prod'].join('\n')), options);
     const chip = root.querySelector<HTMLButtonElement>('.lg-note')!;

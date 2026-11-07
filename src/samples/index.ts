@@ -41,7 +41,8 @@ POST v3/checkout   @app/controllers/checkout_controller.rb:18
   - authenticate!
     > Current.user from the session cookie — 401 when absent
   - Checkout::Place.call(cart, user)   @app/services/checkout/place.rb:9
-    # 3 writes in one transaction; never call this outside a request
+    # 3 writes in one transaction
+    # never call this outside a request
     > one transaction, 3 writes, 6 invariants
     - validate_cart   @app/services/checkout/place.rb:22
       > cart non-empty · every item in stock · price snapshot < 15 min old

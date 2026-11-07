@@ -186,14 +186,36 @@ describe('notes', () => {
     expect(result.nodes[0].notes[0].text).toBe('same indent');
   });
 
-  it('keeps several notes on one line, in order', () => {
-    const result = parse(['- step', '  # first', '  # second'].join('\n'));
-    expect(result.nodes[0].notes.map((n) => n.text)).toEqual(['first', 'second']);
+  it('merges consecutive note lines into one note', () => {
+    const doc = [
+      '- step',
+      '  # 3 writes in one transaction',
+      '  # never call this outside a request',
+    ].join('\n');
+    const notes = parse(doc).nodes[0].notes;
+    expect(notes).toHaveLength(1);
+    expect(notes[0].text).toBe('3 writes in one transaction\nnever call this outside a request');
+    expect(notes[0].line).toBe(2);
+  });
+
+  it('keeps an empty `#` as a paragraph break inside one note', () => {
+    const doc = ['- step', '  # first para', '  #', '  # second para'].join('\n');
+    const notes = parse(doc).nodes[0].notes;
+    expect(notes).toHaveLength(1);
+    expect(notes[0].text).toBe('first para\n\nsecond para');
+  });
+
+  it('does not merge across a line in between, or across indents', () => {
+    const apart = parse(['- step', '  # one', '    - child', '  # two'].join('\n'));
+    expect(apart.nodes[0].notes.map((n) => n.text)).toEqual(['one', 'two']);
+
+    const indented = parse(['- step', '  # shallow', '    # deeper'].join('\n'));
+    expect(indented.nodes[0].notes.map((n) => n.text)).toEqual(['shallow', 'deeper']);
   });
 
   it('treats notes before any node as document notes', () => {
-    const result = parse(['# v3/expenses — API flow', '# another', '', '- step'].join('\n'));
-    expect(result.notes.map((n) => n.text)).toEqual(['v3/expenses — API flow', 'another']);
+    const result = parse(['# v3/expenses — API flow', '# a second line', '', '- step'].join('\n'));
+    expect(result.notes.map((n) => n.text)).toEqual(['v3/expenses — API flow\na second line']);
     expect(result.nodes[0].notes).toEqual([]);
   });
 

@@ -264,6 +264,7 @@ function buildPanel(
   const ownNotes: Note[] = [];
   /** Components inside this body that a `#` line can attach to. */
   const components: Array<{ indent: number; notes: Note[] }> = [];
+  let openNote: NoteChain | null = null;
   let index = start;
 
   while (index < end) {
@@ -278,19 +279,21 @@ function buildPanel(
 
     if (text.startsWith('#')) {
       const noteText = text.replace(/^#+\s*/, '').trim();
-      if (noteText !== '') {
-        let target = ownNotes;
-        for (let seen = components.length - 1; seen >= 0; seen -= 1) {
-          if (components[seen].indent <= current.indent) {
-            target = components[seen].notes;
-            break;
-          }
+      let target = ownNotes;
+      for (let seen = components.length - 1; seen >= 0; seen -= 1) {
+        if (components[seen].indent <= current.indent) {
+          target = components[seen].notes;
+          break;
         }
-        target.push({ text: noteText, line: current.line });
+      }
+      if (noteText !== '' || openNote) {
+        openNote = addNoteLine(openNote, current.indent, target, current.line, noteText);
       }
       index += 1;
       continue;
     }
+
+    openNote = null;
 
     if (text.startsWith('>')) {
       const { text: nestedPeek, anchor: nestedAnchor } = extractAnchor(text.slice(1).trim());
@@ -315,6 +318,33 @@ function buildPanel(
   return panel;
 }
 
+/** Chain of `#` lines that are merging into a single note. */
+interface NoteChain {
+  indent: number;
+  owner: Note[];
+  note: Note;
+}
+
+/**
+ * Two consecutive `#` lines are one multi-line note: they describe the same
+ * thing, so they get one icon and one dialog, not two.
+ */
+function addNoteLine(chain: NoteChain | null, indent: number, owner: Note[], line: number, text: string): NoteChain {
+  if (chain && chain.owner === owner && chain.indent === indent) {
+    chain.note.text = chain.note.text === '' ? text : `${chain.note.text}\n${text}`;
+    return chain;
+  }
+  const note: Note = { text, line };
+  owner.push(note);
+  return { indent, owner, note };
+}
+
+function tidyNotes(notes: Note[]): void {
+  for (const note of notes) {
+    note.text = note.text.replace(/[ \t]+$/gm, '').replace(/\n+$/, '');
+  }
+}
+
 /**
  * The line a `>` panel or a `#` note belongs to: the nearest line above at the
  * same or a shallower indent, not a distant ancestor.
@@ -334,6 +364,7 @@ export function parse(source: string): ParseResult {
   const documentNotes: Note[] = [];
   /** Everything a `#` line can attach to, in source order. */
   const components: Array<{ indent: number; notes: Note[] }> = [];
+  let openNote: NoteChain | null = null;
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const hinted = new Set<string>();
 
@@ -343,7 +374,10 @@ export function parse(source: string): ParseResult {
     const { indent, body, tabbed } = measure(lines[index]);
     index += 1;
 
-    if (body === '') continue;
+    if (body === '') {
+      openNote = null;
+      continue;
+    }
     if (tabbed && !hinted.has('tab')) {
       hinted.add('tab');
       issues.push({
@@ -355,8 +389,6 @@ export function parse(source: string): ParseResult {
 
     if (body.startsWith('#')) {
       const text = body.replace(/^#+\s*/, '').trim();
-      if (text === '') continue;
-      const note: Note = { text, line: lineNo };
       let owner: Note[] | undefined;
       for (let seen = components.length - 1; seen >= 0; seen -= 1) {
         if (components[seen].indent <= indent) {
@@ -364,10 +396,13 @@ export function parse(source: string): ParseResult {
           break;
         }
       }
-      if (owner) owner.push(note);
-      else documentNotes.push(note);
+      const target = owner ?? documentNotes;
+      if (text === '' && !openNote) continue;
+      openNote = addNoteLine(openNote, indent, target, lineNo, text);
       continue;
     }
+
+    openNote = null;
 
     if (isPanelLine(body)) {
       const { text: peek, anchor: peekAnchor } = extractAnchor(body.slice(1).trim());
@@ -433,6 +468,12 @@ export function parse(source: string): ParseResult {
     nodes.push(node);
     stack.push(node);
     components.push({ indent: node.indent, notes: node.notes });
+  }
+
+  tidyNotes(documentNotes);
+  for (const node of nodes) {
+    tidyNotes(node.notes);
+    eachPanel(node.panels, (panel) => tidyNotes(panel.notes));
   }
 
   return { roots, nodes, notes: documentNotes, issues };

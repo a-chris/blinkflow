@@ -244,7 +244,9 @@ function renderNote(note: Note): HTMLElement {
   button.className = 'lg-note';
   button.dataset.line = String(note.line);
   button.appendChild(noteGlyph());
-  button.setAttribute('aria-label', `note: ${note.text}`);
+  const firstLine = note.text.split('\n')[0];
+  const more = note.text.includes('\n') ? ' …' : '';
+  button.setAttribute('aria-label', `note: ${firstLine}${more}`);
 
   button.addEventListener('mouseenter', () => showNotePopup(button, note.text));
   button.addEventListener('mouseleave', hideNotePopup);
