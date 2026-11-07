@@ -200,6 +200,20 @@ describe('render', () => {
     expect(chip.getAttribute('aria-label')).toContain('slow at p99');
   });
 
+  it('puts the note chip before the source anchor', () => {
+    const doc = ['- charge @app/services/charge.rb:9', '  # timeout is deliberate'].join('\n');
+    const row = renderFlow(parse(doc), options).querySelector('.lg-row')!;
+    const order = Array.from(row.children).map((n) => n.className.split(' ')[0].replace('lg-', ''));
+    expect(order).toEqual(['text', 'note', 'anchor']);
+  });
+
+  it('puts the note chip before the anchor on an accordion too', () => {
+    const doc = ['- step', '  > summarize  @app/services/x.rb:2', '    # about the query', '    SELECT 1'].join('\n');
+    const head = renderFlow(parse(doc), options).querySelector('.lg-panel-head')!;
+    const order = Array.from(head.children).map((n) => n.className.split(' ')[0].replace('lg-', ''));
+    expect(order).toEqual(['panel-toggle', 'note', 'anchor']);
+  });
+
   it('shows the note in a popup on hover', () => {
     const root = renderFlow(parse(['- step', '  # measured on prod'].join('\n')), options);
     const chip = root.querySelector<HTMLButtonElement>('.lg-note')!;

@@ -72,8 +72,10 @@ function renderNode(node: LNode, options: RenderOptions, isLast: boolean): HTMLE
     row.appendChild(text);
   }
 
-  if (node.anchor) row.appendChild(renderAnchor(node.anchor, options, node));
+  // Notes sit before the anchor: the note is about this component, the anchor
+  // is a pointer out of it.
   for (const note of node.notes) row.appendChild(renderNote(note));
+  if (node.anchor) row.appendChild(renderAnchor(node.anchor, options, node));
   main.appendChild(row);
 
   const items = contentOf(node);
@@ -163,10 +165,11 @@ function renderPanel(panel: Panel, options: RenderOptions, node: LNode): HTMLEle
     box.append(head, body);
   }
 
-  // The anchor and notes live beside the toggle, not inside it: nesting a link
-  // in a button would make it invalid HTML and swallow the click.
-  if (panel.anchor) head.appendChild(renderAnchor(panel.anchor, options, node));
+  // The notes and anchor live beside the toggle, not inside it: nesting a link
+  // in a button would make it invalid HTML and swallow the click. Notes come
+  // first, anchors last.
   for (const note of panel.notes) head.appendChild(renderNote(note));
+  if (panel.anchor) head.appendChild(renderAnchor(panel.anchor, options, node));
 
   return box;
 }
