@@ -1,6 +1,6 @@
 import './styles/app.css';
 import { parse, stats, type ParseResult } from './lang/parser';
-import { renderFlow, setAllPanels } from './lang/render';
+import { closeNoteDialog, hideNotePopup, renderFlow, setAllPanels } from './lang/render';
 import { createEditor } from './lang/editor';
 import { DEFAULT_EDITOR, displayRef, EDITORS, type EditorId } from './lang/anchors';
 import { DEFAULT_SAMPLE_ID, SAMPLES } from './samples';
@@ -100,6 +100,9 @@ function render(): void {
     },
   });
 
+  // A re-render invalidates any note UI that is still on screen.
+  hideNotePopup();
+  closeNoteDialog();
   previewHost.replaceChildren(flow);
   status(flowSummary(result));
 }
@@ -111,6 +114,7 @@ function labelFor(id: EditorId): string {
 function flowSummary(result: ParseResult): string {
   const s = stats(result);
   const parts = [`${s.nodes} nodes`, `${s.arms} arms`, `${s.panels} panels`];
+  if (s.notes > 0) parts.push(`${s.notes} note${s.notes === 1 ? '' : 's'}`);
   if (s.errors > 0) parts.push(`${s.errors} error${s.errors === 1 ? '' : 's'}`);
   if (s.hints > 0) parts.push(`${s.hints} hint${s.hints === 1 ? '' : 's'}`);
   return parts.join(' · ');

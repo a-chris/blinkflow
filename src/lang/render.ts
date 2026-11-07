@@ -1,6 +1,6 @@
 import { buildOpenUrl, displayRef, type EditorId } from './anchors';
 import { contentOf } from './parser';
-import type { Anchor, LNode, Panel, ParseResult } from './parser';
+import type { Anchor, LNode, Note, Panel, ParseResult } from './parser';
 
 export interface RenderOptions {
   editor: EditorId;
@@ -26,6 +26,8 @@ function el(tag: string, className: string): HTMLElement {
 
 export function renderFlow(result: ParseResult, options: RenderOptions): HTMLElement {
   const flow = el('div', 'lg-flow');
+
+  if (result.notes.length > 0) flow.appendChild(renderDocumentNotes(result.notes));
 
   if (result.roots.length === 0) {
     const empty = el('div', 'lg-empty');
@@ -71,6 +73,7 @@ function renderNode(node: LNode, options: RenderOptions, isLast: boolean): HTMLE
   }
 
   if (node.anchor) row.appendChild(renderAnchor(node.anchor, options, node));
+  for (const note of node.notes) row.appendChild(renderNote(note));
   main.appendChild(row);
 
   const items = contentOf(node);
@@ -184,6 +187,129 @@ function renderAnchor(anchor: Anchor, options: RenderOptions, node?: LNode): HTM
   });
 
   return link;
+}
+
+/**
+ * A `#` note on a node: hover for the popup, click for the dialog. The glyph is
+ * the language's own marker, same idea as the `>` badge.
+ */
+function renderNote(note: Note): HTMLElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'lg-note';
+  button.dataset.line = String(note.line);
+  button.textContent = '#';
+  button.setAttribute('aria-label', `note: ${note.text}`);
+
+  button.addEventListener('mouseenter', () => showNotePopup(button, note.text));
+  button.addEventListener('mouseleave', hideNotePopup);
+  button.addEventListener('focus', () => showNotePopup(button, note.text));
+  button.addEventListener('blur', hideNotePopup);
+  button.addEventListener('click', () => {
+    hideNotePopup();
+    openNoteDialog(note);
+  });
+
+  return button;
+}
+
+/** `#` lines before any node describe the document itself. */
+function renderDocumentNotes(notes: Note[]): HTMLElement {
+  const list = el('div', 'lg-doc-notes');
+
+  for (const note of notes) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'lg-doc-note';
+    button.textContent = note.text;
+    button.title = 'open this note';
+    button.addEventListener('click', () => openNoteDialog(note));
+    list.appendChild(button);
+  }
+
+  return list;
+}
+
+let notePopup: HTMLElement | null = null;
+let noteDialog: HTMLDialogElement | null = null;
+
+function notePopupEl(): HTMLElement {
+  if (notePopup) return notePopup;
+  const popup = el('div', 'lg-note-pop');
+  popup.setAttribute('role', 'tooltip');
+  document.body.appendChild(popup);
+  notePopup = popup;
+  return popup;
+}
+
+function showNotePopup(anchor: HTMLElement, text: string): void {
+  const popup = notePopupEl();
+  popup.textContent = text;
+  popup.classList.add('is-visible');
+
+  const gap = 10;
+  const anchorBox = anchor.getBoundingClientRect();
+  const box = popup.getBoundingClientRect();
+
+  let top = anchorBox.top - box.height - gap;
+  if (top < 8) top = anchorBox.bottom + gap;
+  let left = anchorBox.left + anchorBox.width / 2 - box.width / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - box.width - 8));
+
+  popup.style.top = `${Math.round(top)}px`;
+  popup.style.left = `${Math.round(left)}px`;
+}
+
+export function hideNotePopup(): void {
+  notePopup?.classList.remove('is-visible');
+}
+
+function noteDialogEl(): HTMLDialogElement {
+  if (noteDialog) return noteDialog;
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'lg-note-dialog';
+
+  const header = el('header', 'lg-note-head');
+  const title = el('span', 'lg-note-title');
+  const hash = el('span', 'lg-note-hash');
+  hash.textContent = '#';
+  title.append(hash, document.createTextNode(' note'));
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'lg-note-close';
+  close.textContent = 'close';
+  close.addEventListener('click', closeNoteDialog);
+  header.append(title, close);
+
+  const text = el('p', 'lg-note-text');
+  const meta = el('p', 'lg-note-line');
+
+  dialog.append(header, text, meta);
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) closeNoteDialog();
+  });
+  document.body.appendChild(dialog);
+
+  noteDialog = dialog;
+  return dialog;
+}
+
+export function openNoteDialog(note: Note): void {
+  const dialog = noteDialogEl();
+  const text = dialog.querySelector('.lg-note-text');
+  const meta = dialog.querySelector('.lg-note-line');
+  if (text) text.textContent = note.text;
+  if (meta) meta.textContent = `line ${note.line}`;
+
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else dialog.setAttribute('open', '');
+}
+
+export function closeNoteDialog(): void {
+  if (!noteDialog) return;
+  if (typeof noteDialog.close === 'function') noteDialog.close();
+  else noteDialog.removeAttribute('open');
 }
 
 /** Open or close every panel in a rendered flow. */

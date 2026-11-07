@@ -183,6 +183,45 @@ describe('render', () => {
     expect(bodies.every((b) => !b.hidden)).toBe(true);
   });
 
+  it('renders a note chip on the node it belongs to', () => {
+    const root = renderFlow(parse(['- step', '  # the reason'].join('\n')), options);
+    const chip = root.querySelector<HTMLButtonElement>('.lg-note')!;
+    expect(chip).not.toBeNull();
+    expect(chip.textContent).toBe('#');
+    expect(chip.getAttribute('aria-label')).toContain('the reason');
+  });
+
+  it('shows the note in a popup on hover', () => {
+    const root = renderFlow(parse(['- step', '  # measured on prod'].join('\n')), options);
+    const chip = root.querySelector<HTMLButtonElement>('.lg-note')!;
+    chip.dispatchEvent(new MouseEvent('mouseenter'));
+
+    const popup = document.querySelector<HTMLElement>('.lg-note-pop')!;
+    expect(popup.classList.contains('is-visible')).toBe(true);
+    expect(popup.textContent).toBe('measured on prod');
+
+    chip.dispatchEvent(new MouseEvent('mouseleave'));
+    expect(popup.classList.contains('is-visible')).toBe(false);
+  });
+
+  it('opens a dialog when a note is clicked', () => {
+    const root = renderFlow(parse(['- step', '  # the long version'].join('\n')), options);
+    root.querySelector<HTMLButtonElement>('.lg-note')!.click();
+
+    const dialog = document.querySelector<HTMLDialogElement>('.lg-note-dialog')!;
+    expect(dialog).not.toBeNull();
+    expect(dialog.open || dialog.hasAttribute('open')).toBe(true);
+    expect(dialog.querySelector('.lg-note-text')?.textContent).toBe('the long version');
+    expect(dialog.querySelector('.lg-note-line')?.textContent).toBe('line 2');
+  });
+
+  it('renders document notes above the flow', () => {
+    const root = renderFlow(parse(['# v3/expenses — API flow', '- step'].join('\n')), options);
+    const notes = root.querySelectorAll('.lg-doc-note');
+    expect(notes).toHaveLength(1);
+    expect(notes[0].textContent).toBe('v3/expenses — API flow');
+  });
+
   it('shows an empty state', () => {
     expect(renderFlow(parse('# only a comment'), options).querySelector('.lg-empty')).not.toBeNull();
   });

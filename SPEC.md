@@ -46,7 +46,7 @@ One node per line. Leading spaces define hierarchy. Tabs are an error.
 | `> text` | panel attached to the line above (see below) |
 | `@word` | actor, e.g. `@user`, `@cron` |
 | `label: text` | arm — a labelled branch (see below) |
-| `# …` | comment, not rendered |
+| `# text` | note attached to the line above — hover for a popup, click for a dialog |
 
 `-> ` is accepted as an alias for `- ` for muscle memory, with a one-time hint.
 
@@ -121,6 +121,25 @@ structure, not text. Write `\>` for a literal one:
 
 `-` keeps its double life intact — a step in the spine, a bullet inside a body —
 because only `>` changed meaning inside bodies.
+
+### Notes
+
+```
+- Database.where(user_id:)
+  # p50 1.2ms on prod, p99 6.1ms — measured 2025-11
+```
+
+A `#` line attaches to the nearest line above at the same or a shallower indent,
+exactly like a panel, and renders as a small `#` chip in that line's row. Hovering
+the chip shows the text; clicking it opens a dialog with the text and the source
+line number.
+
+A `#` written before any node has nothing to attach to, so it describes the
+document: it renders above the flow as a plain muted line, clickable for the
+same dialog.
+
+Notes are single lines. Multi-line reasoning belongs in a `>` panel, and a `#`
+inside a panel body is literal text (so shell and SQL comments survive).
 
 ### Source anchors
 

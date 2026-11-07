@@ -47,6 +47,11 @@ export interface Panel {
   line: number;
 }
 
+export interface Note {
+  text: string;
+  line: number;
+}
+
 export interface LNode {
   kind: NodeKind;
   text: string;
@@ -59,6 +64,8 @@ export interface LNode {
   line: number;
   anchor?: Anchor;
   panels: Panel[];
+  /** `#` notes written under this line. */
+  notes: Note[];
   children: LNode[];
 }
 
@@ -72,6 +79,8 @@ export interface ParseResult {
   roots: LNode[];
   /** Every node in source order. */
   nodes: LNode[];
+  /** `#` notes written before any node — they belong to the document. */
+  notes: Note[];
   issues: ParseIssue[];
 }
 
@@ -287,11 +296,23 @@ function buildPanel(
   return panel;
 }
 
+/**
+ * The line a `>` panel or a `#` note belongs to: the nearest line above at the
+ * same or a shallower indent, not a distant ancestor.
+ */
+function attachTarget(nodes: LNode[], indent: number): LNode | undefined {
+  for (let seen = nodes.length - 1; seen >= 0; seen -= 1) {
+    if (nodes[seen].indent <= indent) return nodes[seen];
+  }
+  return undefined;
+}
+
 export function parse(source: string): ParseResult {
   const issues: ParseIssue[] = [];
   const roots: LNode[] = [];
   const nodes: LNode[] = [];
   const stack: LNode[] = [];
+  const documentNotes: Note[] = [];
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const hinted = new Set<string>();
 
@@ -302,7 +323,6 @@ export function parse(source: string): ParseResult {
     index += 1;
 
     if (body === '') continue;
-    if (body.startsWith('#')) continue;
     if (tabbed && !hinted.has('tab')) {
       hinted.add('tab');
       issues.push({
@@ -312,18 +332,21 @@ export function parse(source: string): ParseResult {
       });
     }
 
+    if (body.startsWith('#')) {
+      const text = body.replace(/^#+\s*/, '').trim();
+      if (text === '') continue;
+      const note: Note = { text, line: lineNo };
+      const owner = attachTarget(nodes, indent);
+      if (owner) owner.notes.push(note);
+      else documentNotes.push(note);
+      continue;
+    }
+
     if (isPanelLine(body)) {
       const { text: peek, anchor: peekAnchor } = extractAnchor(body.slice(1).trim());
-      // Attach to the nearest line above at the same or a shallower indent —
-      // not to the nearest ancestor. A panel written between siblings belongs
-      // to the sibling above it, so it renders where it was written.
-      let target: LNode | undefined;
-      for (let seen = nodes.length - 1; seen >= 0; seen -= 1) {
-        if (nodes[seen].indent <= indent) {
-          target = nodes[seen];
-          break;
-        }
-      }
+      // A panel written between siblings belongs to the sibling above it, so it
+      // renders where it was written.
+      const target = attachTarget(nodes, indent);
       if (!target) {
         issues.push({
           line: lineNo,
@@ -368,6 +391,7 @@ export function parse(source: string): ParseResult {
       depth: parent ? parent.depth + 1 : 0,
       line: lineNo,
       panels: [],
+      notes: [],
       children: [],
     };
     if (classified.label !== undefined) node.label = classified.label;
@@ -381,7 +405,7 @@ export function parse(source: string): ParseResult {
     stack.push(node);
   }
 
-  return { roots, nodes, issues };
+  return { roots, nodes, notes: documentNotes, issues };
 }
 
 /** Panels and child nodes share one source order. */
@@ -405,6 +429,7 @@ export function contentOf(node: LNode): ContentItem[] {
 export interface FlowStats {
   nodes: number;
   panels: number;
+  notes: number;
   arms: number;
   errors: number;
   hints: number;
@@ -423,14 +448,17 @@ function countPanels(panels: Panel[]): number {
 
 export function stats(result: ParseResult): FlowStats {
   let panels = 0;
+  let notes = result.notes.length;
   let arms = 0;
   for (const node of result.nodes) {
     panels += countPanels(node.panels);
+    notes += node.notes.length;
     if (node.kind === 'arm') arms += 1;
   }
   return {
     nodes: result.nodes.length,
     panels,
+    notes,
     arms,
     errors: result.issues.filter((i) => i.severity === 'error').length,
     hints: result.issues.filter((i) => i.severity === 'hint').length,

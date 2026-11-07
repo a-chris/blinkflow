@@ -172,6 +172,47 @@ describe('arms', () => {
   });
 });
 
+describe('notes', () => {
+  it('attaches a note to the line above it', () => {
+    const doc = ['- Database.where(...)', '  # p50 measured on prod, 6ms at p99', '- next'].join('\n');
+    const result = parse(doc);
+    expect(result.nodes[0].notes).toEqual([{ text: 'p50 measured on prod, 6ms at p99', line: 2 }]);
+    expect(result.nodes[1].notes).toEqual([]);
+    expect(result.issues).toEqual([]);
+  });
+
+  it('attaches a note written at the same indent as its line', () => {
+    const result = parse(['- step', '# same indent'].join('\n'));
+    expect(result.nodes[0].notes[0].text).toBe('same indent');
+  });
+
+  it('keeps several notes on one line, in order', () => {
+    const result = parse(['- step', '  # first', '  # second'].join('\n'));
+    expect(result.nodes[0].notes.map((n) => n.text)).toEqual(['first', 'second']);
+  });
+
+  it('treats notes before any node as document notes', () => {
+    const result = parse(['# v3/expenses — API flow', '# another', '', '- step'].join('\n'));
+    expect(result.notes.map((n) => n.text)).toEqual(['v3/expenses — API flow', 'another']);
+    expect(result.nodes[0].notes).toEqual([]);
+  });
+
+  it('leaves a hash inside a panel body as text', () => {
+    const doc = ['- step', '  > shell', '    # this is a shell comment'].join('\n');
+    expect(bodyOf(parse(doc).nodes[0].panels[0])).toEqual(['# this is a shell comment']);
+  });
+
+  it('ignores an empty note', () => {
+    const result = parse(['- step', '  #', '  #   '].join('\n'));
+    expect(result.nodes[0].notes).toEqual([]);
+  });
+
+  it('counts notes in the stats', () => {
+    const result = parse(['# doc note', '- step', '  # node note'].join('\n'));
+    expect(stats(result).notes).toBe(2);
+  });
+});
+
 describe('nested panels', () => {
   it('parses a panel inside a panel body', () => {
     const doc = [
