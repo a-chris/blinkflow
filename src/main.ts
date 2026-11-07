@@ -77,6 +77,11 @@ const view = createEditor({
   },
 });
 
+// Dev-only handle: makes the playground debuggable from the console.
+if (import.meta.env.DEV) {
+  (window as unknown as { lightgram?: unknown }).lightgram = { view };
+}
+
 function schedule(): void {
   window.clearTimeout(renderTimer);
   renderTimer = window.setTimeout(render, 90);

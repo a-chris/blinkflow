@@ -46,6 +46,10 @@ Toolbar: **sample** (three worked examples), **open in** (VS Code, Cursor, Zed,
 Sublime, `file://`), **base** (the directory anchors are resolved against),
 **expand all** / **collapse all**.
 
+**Tab** indents the current line or every selected line by one level (2 spaces),
+**Shift-Tab** outdents. Indentation is inserted as spaces, never a literal tab,
+because the parser rejects tabs — depth is the structure, so the two must agree.
+
 Anchors are relative to *base*, which starts empty. Point it at a repo root and
 `@app/models/x.rb:41` opens `<base>/app/models/x.rb` at line 41. Until you set it,
 clicking an anchor asks for the base instead of opening a wrong path.

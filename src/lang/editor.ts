@@ -1,7 +1,8 @@
 import { EditorState } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
-import { StreamLanguage, syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+import { EditorView, keymap } from '@codemirror/view';
+import { StreamLanguage, syntaxHighlighting, HighlightStyle, indentUnit } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
+import { indentWithTab } from '@codemirror/commands';
 import { basicSetup } from 'codemirror';
 
 const MONO = 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace';
@@ -84,6 +85,11 @@ export function createEditor(options: EditorOptions): EditorView {
     state: EditorState.create({
       doc: options.doc,
       extensions: [
+        // Tab and Shift-Tab indent in units of spaces, never a literal tab:
+        // the parser rejects tab indentation, so this is load-bearing.
+        keymap.of([indentWithTab]),
+        indentUnit.of('  '),
+        EditorState.tabSize.of(2),
         basicSetup,
         lightgramLanguage,
         syntaxHighlighting(highlight),
