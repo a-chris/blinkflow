@@ -31,7 +31,8 @@ GET v3/expenses
 - `gate:` / `yes:` / `no:` / `else:` / `err:` are reserved; any other
   `label:` is a free-form arm (a value match under a gate, a path split without one)
 - trailing `@path:line` opens that file in your editor
-- `# note` attaches a note to the line above: hover for a popup, click for a dialog
+- `# note` attaches to the component above — a line or an accordion — as a note chip:
+  hover for a popup, click for a dialog
 - indentation is the tree; panels nest, and `\>` escapes a literal `>` inside a body
 
 ## Playground

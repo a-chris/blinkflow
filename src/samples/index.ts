@@ -19,6 +19,7 @@ GET v3/expenses
         - Database.where(user_id:, cursor:, limit:)  @app/models/expense.rb:41
           # p50 1.2ms on prod, p99 6.1ms — measured 2025-11, 200k rows
           > SELECT * FROM expenses
+            # the plan is a index scan + sort; 5ms at p99 when the cursor is cold
             WHERE user_id = $1
             ORDER BY created_at DESC, id DESC
             LIMIT 25

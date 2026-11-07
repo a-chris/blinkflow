@@ -197,9 +197,35 @@ describe('notes', () => {
     expect(result.nodes[0].notes).toEqual([]);
   });
 
-  it('leaves a hash inside a panel body as text', () => {
-    const doc = ['- step', '  > shell', '    # this is a shell comment'].join('\n');
-    expect(bodyOf(parse(doc).nodes[0].panels[0])).toEqual(['# this is a shell comment']);
+  it('attaches a note written inside a body to that panel', () => {
+    const doc = ['- step', '  > shell', '    # the script is idempotent', '    $ ls'].join('\n');
+    const panel = parse(doc).nodes[0].panels[0];
+    expect(panel.notes.map((n) => n.text)).toEqual(['the script is idempotent']);
+    expect(bodyOf(panel)).toEqual(['$ ls']);
+  });
+
+  it('attaches a note written between spine lines to the accordion above', () => {
+    const doc = ['- step', '  > peek', '    body line', '  # about this panel'].join('\n');
+    const panel = parse(doc).nodes[0].panels[0];
+    expect(panel.notes.map((n) => n.text)).toEqual(['about this panel']);
+    expect(parse(doc).nodes[0].notes).toEqual([]);
+  });
+
+  it('attaches a note inside a body to the nested panel above it', () => {
+    const doc = ['- step', '  > outer', '    > inner', '      sql', '    # about the inner one', '    text'].join(
+      '\n',
+    );
+    const outer = parse(doc).nodes[0].panels[0];
+    const inner = outer.body.find((i) => i.kind === 'panel');
+    expect(inner?.kind === 'panel' && inner.panel.notes.map((n) => n.text)).toEqual(['about the inner one']);
+    expect(outer.notes).toEqual([]);
+  });
+
+  it('keeps an escaped hash as text', () => {
+    const doc = ['- step', '  > shell', '    \\# not a note'].join('\n');
+    const panel = parse(doc).nodes[0].panels[0];
+    expect(panel.notes).toEqual([]);
+    expect(bodyOf(panel)).toEqual(['# not a note']);
   });
 
   it('ignores an empty note', () => {
@@ -207,9 +233,9 @@ describe('notes', () => {
     expect(result.nodes[0].notes).toEqual([]);
   });
 
-  it('counts notes in the stats', () => {
-    const result = parse(['# doc note', '- step', '  # node note'].join('\n'));
-    expect(stats(result).notes).toBe(2);
+  it('counts notes in the stats, including notes on accordions', () => {
+    const doc = ['# doc note', '- step', '  # node note', '  > peek', '    # panel note'].join('\n');
+    expect(stats(parse(doc)).notes).toBe(3);
   });
 });
 

@@ -187,8 +187,17 @@ describe('render', () => {
     const root = renderFlow(parse(['- step', '  # the reason'].join('\n')), options);
     const chip = root.querySelector<HTMLButtonElement>('.lg-note')!;
     expect(chip).not.toBeNull();
-    expect(chip.textContent).toBe('#');
+    expect(chip.querySelector('svg.lg-note-icon')).not.toBeNull();
     expect(chip.getAttribute('aria-label')).toContain('the reason');
+  });
+
+  it('shows a note chip on an accordion, not only on nodes', () => {
+    const doc = ['- step', '  > SELECT * FROM expenses', '    WHERE user_id = $1', '    # slow at p99'].join('\n');
+    const root = renderFlow(parse(doc), options);
+    const panelHead = root.querySelector<HTMLElement>('.lg-panel-head')!;
+    const chip = panelHead.querySelector<HTMLButtonElement>('.lg-note')!;
+    expect(chip).not.toBeNull();
+    expect(chip.getAttribute('aria-label')).toContain('slow at p99');
   });
 
   it('shows the note in a popup on hover', () => {

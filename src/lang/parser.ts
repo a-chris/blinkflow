@@ -30,6 +30,11 @@ export interface Anchor {
   column?: number;
 }
 
+export interface Note {
+  text: string;
+  line: number;
+}
+
 export type PanelBodyItem =
   | { kind: 'text'; text: string; line: number }
   | { kind: 'panel'; panel: Panel; line: number };
@@ -44,11 +49,8 @@ export interface Panel {
    * Text keeps its relative indentation, minus the body's common margin.
    */
   body: PanelBodyItem[];
-  line: number;
-}
-
-export interface Note {
-  text: string;
+  /** `#` notes written against this panel. An accordion is a component too. */
+  notes: Note[];
   line: number;
 }
 
@@ -259,6 +261,9 @@ function buildPanel(
   const base = filled.length > 0 ? Math.min(...filled.map((l) => l.indent)) : 0;
 
   const items: PanelBodyItem[] = [];
+  const ownNotes: Note[] = [];
+  /** Components inside this body that a `#` line can attach to. */
+  const components: Array<{ indent: number; notes: Note[] }> = [];
   let index = start;
 
   while (index < end) {
@@ -271,27 +276,41 @@ function buildPanel(
       continue;
     }
 
+    if (text.startsWith('#')) {
+      const noteText = text.replace(/^#+\s*/, '').trim();
+      if (noteText !== '') {
+        let target = ownNotes;
+        for (let seen = components.length - 1; seen >= 0; seen -= 1) {
+          if (components[seen].indent <= current.indent) {
+            target = components[seen].notes;
+            break;
+          }
+        }
+        target.push({ text: noteText, line: current.line });
+      }
+      index += 1;
+      continue;
+    }
+
     if (text.startsWith('>')) {
       const { text: nestedPeek, anchor: nestedAnchor } = extractAnchor(text.slice(1).trim());
       const nestedEnd = boundOf(raw, index + 1, current.indent);
-      items.push({
-        kind: 'panel',
-        panel: buildPanel(nestedPeek, nestedAnchor, raw, index + 1, nestedEnd, current.line),
-        line: current.line,
-      });
+      const nestedPanel = buildPanel(nestedPeek, nestedAnchor, raw, index + 1, nestedEnd, current.line);
+      items.push({ kind: 'panel', panel: nestedPanel, line: current.line });
+      components.push({ indent: current.indent, notes: nestedPanel.notes });
       index = nestedEnd;
       continue;
     }
 
     items.push({
       kind: 'text',
-      text: text.startsWith('\\>') ? text.slice(1) : text,
+      text: text.startsWith('\\>') ? text.slice(1) : text.startsWith('\\#') ? text.slice(1) : text,
       line: current.line,
     });
     index += 1;
   }
 
-  const panel: Panel = { peek, body: trimTrailingBlank(items), line };
+  const panel: Panel = { peek, body: trimTrailingBlank(items), notes: ownNotes, line };
   if (anchor) panel.anchor = anchor;
   return panel;
 }
@@ -313,6 +332,8 @@ export function parse(source: string): ParseResult {
   const nodes: LNode[] = [];
   const stack: LNode[] = [];
   const documentNotes: Note[] = [];
+  /** Everything a `#` line can attach to, in source order. */
+  const components: Array<{ indent: number; notes: Note[] }> = [];
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const hinted = new Set<string>();
 
@@ -336,8 +357,14 @@ export function parse(source: string): ParseResult {
       const text = body.replace(/^#+\s*/, '').trim();
       if (text === '') continue;
       const note: Note = { text, line: lineNo };
-      const owner = attachTarget(nodes, indent);
-      if (owner) owner.notes.push(note);
+      let owner: Note[] | undefined;
+      for (let seen = components.length - 1; seen >= 0; seen -= 1) {
+        if (components[seen].indent <= indent) {
+          owner = components[seen].notes;
+          break;
+        }
+      }
+      if (owner) owner.push(note);
       else documentNotes.push(note);
       continue;
     }
@@ -369,7 +396,9 @@ export function parse(source: string): ParseResult {
         raw.push({ indent: measured.indent, raw: next.trimEnd(), line: index + 1 });
         index += 1;
       }
-      target.panels.push(buildPanel(peek, peekAnchor, raw, 0, raw.length, lineNo));
+      const panel = buildPanel(peek, peekAnchor, raw, 0, raw.length, lineNo);
+      target.panels.push(panel);
+      components.push({ indent, notes: panel.notes });
       continue;
     }
 
@@ -403,6 +432,7 @@ export function parse(source: string): ParseResult {
 
     nodes.push(node);
     stack.push(node);
+    components.push({ indent: node.indent, notes: node.notes });
   }
 
   return { roots, nodes, notes: documentNotes, issues };
@@ -435,15 +465,13 @@ export interface FlowStats {
   hints: number;
 }
 
-function countPanels(panels: Panel[]): number {
-  let total = 0;
+function eachPanel(panels: Panel[], visit: (panel: Panel) => void): void {
   for (const panel of panels) {
-    total += 1;
+    visit(panel);
     for (const item of panel.body) {
-      if (item.kind === 'panel') total += countPanels([item.panel]);
+      if (item.kind === 'panel') eachPanel([item.panel], visit);
     }
   }
-  return total;
 }
 
 export function stats(result: ParseResult): FlowStats {
@@ -451,8 +479,11 @@ export function stats(result: ParseResult): FlowStats {
   let notes = result.notes.length;
   let arms = 0;
   for (const node of result.nodes) {
-    panels += countPanels(node.panels);
     notes += node.notes.length;
+    eachPanel(node.panels, (panel) => {
+      panels += 1;
+      notes += panel.notes.length;
+    });
     if (node.kind === 'arm') arms += 1;
   }
   return {

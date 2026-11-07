@@ -163,9 +163,10 @@ function renderPanel(panel: Panel, options: RenderOptions, node: LNode): HTMLEle
     box.append(head, body);
   }
 
-  // The anchor lives beside the toggle, not inside it: nesting a link in a
-  // button would make it invalid HTML and swallow the click.
+  // The anchor and notes live beside the toggle, not inside it: nesting a link
+  // in a button would make it invalid HTML and swallow the click.
   if (panel.anchor) head.appendChild(renderAnchor(panel.anchor, options, node));
+  for (const note of panel.notes) head.appendChild(renderNote(note));
 
   return box;
 }
@@ -190,15 +191,56 @@ function renderAnchor(anchor: Anchor, options: RenderOptions, node?: LNode): HTM
 }
 
 /**
- * A `#` note on a node: hover for the popup, click for the dialog. The glyph is
- * the language's own marker, same idea as the `>` badge.
+ * A note page with a folded corner — reads as "note" at 13px far better than a
+ * pencil, and as inline SVG it takes `currentColor` and never renders as emoji.
+ */
+function noteGlyph(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'lg-note-icon');
+
+  const outline = document.createElementNS(ns, 'path');
+  outline.setAttribute('d', 'M3.4 2.4h9.2a1 1 0 0 1 1 1v6.5l-3.7 3.7H3.4a1 1 0 0 1-1-1V3.4a1 1 0 0 1 1-1Z');
+  outline.setAttribute('fill', 'none');
+  outline.setAttribute('stroke', 'currentColor');
+  outline.setAttribute('stroke-width', '1.25');
+  outline.setAttribute('stroke-linejoin', 'round');
+
+  const fold = document.createElementNS(ns, 'path');
+  fold.setAttribute('d', 'M10 13.6v-3.4a.4.4 0 0 1 .4-.4h3.2');
+  fold.setAttribute('fill', 'none');
+  fold.setAttribute('stroke', 'currentColor');
+  fold.setAttribute('stroke-width', '1.25');
+  fold.setAttribute('stroke-linejoin', 'round');
+
+  const lineA = document.createElementNS(ns, 'path');
+  lineA.setAttribute('d', 'M4.9 5.6h6.2');
+  lineA.setAttribute('stroke', 'currentColor');
+  lineA.setAttribute('stroke-width', '1.1');
+  lineA.setAttribute('stroke-linecap', 'round');
+
+  const lineB = document.createElementNS(ns, 'path');
+  lineB.setAttribute('d', 'M4.9 8.1h4.1');
+  lineB.setAttribute('stroke', 'currentColor');
+  lineB.setAttribute('stroke-width', '1.1');
+  lineB.setAttribute('stroke-linecap', 'round');
+
+  svg.append(outline, fold, lineA, lineB);
+  return svg;
+}
+
+/**
+ * A `#` note on a component: hover for the popup, click for the dialog.
+ * Works the same on a node and on an accordion.
  */
 function renderNote(note: Note): HTMLElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'lg-note';
   button.dataset.line = String(note.line);
-  button.textContent = '#';
+  button.appendChild(noteGlyph());
   button.setAttribute('aria-label', `note: ${note.text}`);
 
   button.addEventListener('mouseenter', () => showNotePopup(button, note.text));
@@ -221,7 +263,9 @@ function renderDocumentNotes(notes: Note[]): HTMLElement {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'lg-doc-note';
-    button.textContent = note.text;
+    const label = el('span', 'lg-doc-note-text');
+    label.textContent = note.text;
+    button.append(noteGlyph(), label);
     button.title = 'open this note';
     button.addEventListener('click', () => openNoteDialog(note));
     list.appendChild(button);
@@ -272,9 +316,9 @@ function noteDialogEl(): HTMLDialogElement {
 
   const header = el('header', 'lg-note-head');
   const title = el('span', 'lg-note-title');
-  const hash = el('span', 'lg-note-hash');
-  hash.textContent = '#';
-  title.append(hash, document.createTextNode(' note'));
+  const glyph = el('span', 'lg-note-glyph');
+  glyph.appendChild(noteGlyph());
+  title.append(glyph, document.createTextNode(' note'));
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'lg-note-close';

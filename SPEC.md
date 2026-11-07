@@ -127,19 +127,27 @@ because only `>` changed meaning inside bodies.
 ```
 - Database.where(user_id:)
   # p50 1.2ms on prod, p99 6.1ms — measured 2025-11
+
+  > SELECT * FROM expenses
+    # index scan + sort; 5ms at p99 when the cursor is cold
+    WHERE user_id = $1
 ```
 
-A `#` line attaches to the nearest line above at the same or a shallower indent,
-exactly like a panel, and renders as a small `#` chip in that line's row. Hovering
-the chip shows the text; clicking it opens a dialog with the text and the source
-line number.
+A note attaches to the nearest **component** above it at the same or a shallower
+indent. A component is either a line or an accordion — an accordion is a parent
+component like any other, so it carries a peek, an anchor, a body and notes.
 
-A `#` written before any node has nothing to attach to, so it describes the
-document: it renders above the flow as a plain muted line, clickable for the
-same dialog.
+The note renders as a small note chip in that component's row. Hovering shows
+the text in a popup; clicking opens a dialog with the text and its source line.
 
-Notes are single lines. Multi-line reasoning belongs in a `>` panel, and a `#`
-inside a panel body is literal text (so shell and SQL comments survive).
+Inside a panel body the same rule applies: the note attaches to the nearest
+component there, which is the enclosing panel or a nested one. A body line that
+should keep a literal leading `#` is written `\#`.
+
+A `#` before any component has nothing to attach to, so it describes the
+document and renders above the flow.
+
+Notes are single lines. Multi-line reasoning belongs in a panel.
 
 ### Source anchors
 
