@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>lightgram — light diagrams</title>
+    <meta name="description" content="A tiny text notation for flows, with collapsible detail and click-through source anchors." />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="logo">⌁</span>
+          <h1>lightgram</h1>
+          <span class="tag">light diagrams</span>
+        </div>
+        <div class="controls">
+          <label class="field">
+            <span>sample</span>
+            <select id="sample"></select>
+          </label>
+          <label class="field">
+            <span>open in</span>
+            <select id="open-in"></select>
+          </label>
+          <label class="field">
+            <span>base</span>
+            <input id="base" spellcheck="false" size="22" />
+          </label>
+          <div class="buttons">
+            <button id="expand" type="button" title="Open every panel">expand all</button>
+            <button id="collapse" type="button" title="Close every panel">collapse all</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="split" id="split">
+        <section class="pane pane-editor">
+          <div class="pane-head"><span>source</span><span class="pane-hint">indent = structure</span></div>
+          <div class="editor-host" id="editor"></div>
+        </section>
+        <div class="gutter" id="gutter" role="separator" aria-orientation="vertical" aria-label="Resize panes"></div>
+        <section class="pane pane-preview">
+          <div class="pane-head"><span>diagram</span><span class="pane-hint">click ▸ for detail</span></div>
+          <div class="preview" id="preview"></div>
+        </section>
+      </main>
+
+      <footer class="status" id="status"></footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
