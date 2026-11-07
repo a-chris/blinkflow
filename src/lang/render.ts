@@ -1,10 +1,11 @@
 import { buildOpenUrl, displayRef, type EditorId } from './anchors';
+import { contentOf } from './parser';
 import type { Anchor, LNode, Panel, ParseResult } from './parser';
 
 export interface RenderOptions {
   editor: EditorId;
   baseDir: string;
-  onAnchorClick?: (url: string, node: LNode, anchor: Anchor) => void;
+  onAnchorClick?: (url: string, anchor: Anchor, node?: LNode) => void;
 }
 
 const GLYPHS: Record<string, string> = {
@@ -33,7 +34,7 @@ export function renderFlow(result: ParseResult, options: RenderOptions): HTMLEle
     return flow;
   }
 
-  const list = el('div', 'lg-children lg-roots');
+  const list = el('div', 'lg-content lg-roots');
   result.roots.forEach((node, index) => {
     list.appendChild(renderNode(node, options, index === result.roots.length - 1));
   });
@@ -69,68 +70,104 @@ function renderNode(node: LNode, options: RenderOptions, isLast: boolean): HTMLE
     row.appendChild(text);
   }
 
-  if (node.anchor) row.appendChild(renderAnchor(node, node.anchor, options));
+  if (node.anchor) row.appendChild(renderAnchor(node.anchor, options, node));
   main.appendChild(row);
 
-  for (const panel of node.panels) main.appendChild(renderPanel(panel));
-
-  if (node.children.length > 0) {
-    const children = el('div', 'lg-children');
-    node.children.forEach((child, index) => {
-      children.appendChild(renderNode(child, options, index === node.children.length - 1));
-    });
-    main.appendChild(children);
+  const items = contentOf(node);
+  if (items.length > 0) {
+    const content = el('div', 'lg-content');
+    const lastChild = node.children[node.children.length - 1];
+    for (const item of items) {
+      content.appendChild(
+        item.kind === 'panel'
+          ? renderPanel(item.panel, options, node)
+          : renderNode(item.node, options, item.node === lastChild),
+      );
+    }
+    main.appendChild(content);
   }
 
   wrapper.append(marker, main);
   return wrapper;
 }
 
-function renderPanel(panel: Panel): HTMLElement {
-  const box = el('div', 'lg-panel');
-
-  if (panel.body.length === 0) {
-    // A peek with no body has nothing to open: render it as a static detail line.
-    box.classList.add('lg-panel-static');
-    const staticBody = el('div', 'lg-peek');
-    staticBody.textContent = panel.peek || 'details';
-    box.appendChild(staticBody);
-    return box;
-  }
-
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.className = 'lg-panel-toggle';
-  toggle.setAttribute('aria-expanded', 'false');
-  toggle.dataset.line = String(panel.line);
-
-  const chevron = el('span', 'lg-chevron');
-  chevron.textContent = '▸';
+function peekSpan(panel: Panel): HTMLElement {
   const peek = el('span', 'lg-peek');
   peek.textContent = panel.peek || 'details';
+  return peek;
+}
 
-  toggle.append(chevron, peek);
+function renderPanel(panel: Panel, options: RenderOptions, node: LNode): HTMLElement {
+  const box = el('div', 'lg-panel');
+  const head = el('div', 'lg-panel-head');
 
-  const body = el('div', 'lg-panel-body');
-  body.hidden = true;
-  const pre = document.createElement('pre');
-  pre.className = 'lg-pre';
-  pre.textContent = panel.body.join('\n');
-  body.appendChild(pre);
+  if (panel.body.length === 0) {
+    // A peek with no body has nothing to open: render it as an annotation.
+    box.classList.add('lg-panel-static');
+    head.appendChild(peekSpan(panel));
+    box.appendChild(head);
+  } else {
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'lg-panel-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.dataset.line = String(panel.line);
 
-  toggle.addEventListener('click', () => {
-    const open = toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute('aria-expanded', String(!open));
-    body.hidden = open;
-    chevron.textContent = open ? '▸' : '▾';
-    box.classList.toggle('is-open', !open);
-  });
+    // The badge shows the language's own operator: `>` in the source is `>`
+    // in the render, rotated a quarter turn once the body is open.
+    const glyph = el('span', 'lg-panel-glyph');
+    glyph.textContent = '>';
+    glyph.setAttribute('aria-hidden', 'true');
 
-  box.append(toggle, body);
+    const count = el('span', 'lg-panel-count');
+    count.textContent = String(panel.body.length);
+    count.title = `${panel.body.length} line${panel.body.length === 1 ? '' : 's'} inside`;
+
+    toggle.append(glyph, peekSpan(panel), count);
+
+    const body = el('div', 'lg-panel-body');
+    body.hidden = true;
+
+    // Text runs render as one block each; a nested panel splits the run, so the
+    // body reads in exactly the order it was written.
+    let run: string[] = [];
+    const flush = (): void => {
+      if (run.length === 0) return;
+      const pre = document.createElement('pre');
+      pre.className = 'lg-pre';
+      pre.textContent = run.join('\n');
+      body.appendChild(pre);
+      run = [];
+    };
+    for (const item of panel.body) {
+      if (item.kind === 'text') {
+        run.push(item.text);
+        continue;
+      }
+      flush();
+      body.appendChild(renderPanel(item.panel, options, node));
+    }
+    flush();
+
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!open));
+      body.hidden = open;
+      box.classList.toggle('is-open', !open);
+    });
+
+    head.appendChild(toggle);
+    box.append(head, body);
+  }
+
+  // The anchor lives beside the toggle, not inside it: nesting a link in a
+  // button would make it invalid HTML and swallow the click.
+  if (panel.anchor) head.appendChild(renderAnchor(panel.anchor, options, node));
+
   return box;
 }
 
-function renderAnchor(node: LNode, anchor: Anchor, options: RenderOptions): HTMLElement {
+function renderAnchor(anchor: Anchor, options: RenderOptions, node?: LNode): HTMLElement {
   const url = buildOpenUrl(options.editor, options.baseDir, anchor);
   const link = document.createElement('a');
   link.className = 'lg-anchor';
@@ -142,7 +179,7 @@ function renderAnchor(node: LNode, anchor: Anchor, options: RenderOptions): HTML
 
   link.addEventListener('click', (event) => {
     event.preventDefault();
-    if (options.onAnchorClick) options.onAnchorClick(url, node, anchor);
+    if (options.onAnchorClick) options.onAnchorClick(url, anchor, node);
     else window.location.href = url;
   });
 

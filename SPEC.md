@@ -27,7 +27,7 @@ Three zoom levels, which is the whole point:
 | level | what you see | when |
 |---|---|---|
 | spine | indentation + markers | grasp the flow |
-| panel | click `▸` for SQL, notes, implementation detail | point at the interesting part |
+| panel | click the `>` badge for SQL, notes, implementation detail | point at the interesting part |
 | source | click `expenses.rb:12` → opens your editor at that line | read the real code |
 
 ## Grammar
@@ -84,15 +84,43 @@ because that belongs in a panel.
 
 - The peek line is rendered even when the panel is closed, so a closed panel
   still tells you what is inside.
+- A panel attaches to the **nearest line above it at the same or a shallower
+  indent** — the sibling above, not a distant ancestor. Panels and child nodes
+  therefore render in exactly the order they were written.
+- A peek line can carry its own source anchor (`> built by \`build_query\`
+  @app/services/get_expenses.rb:34`). It renders as a link beside the toggle,
+  so clicking it opens the file instead of expanding the panel.
 - The body is **raw text**: no parsing, no escaping. SQL, stack traces, prose,
   bullet lists — anything.
 - A `>` with no indented body under it is rendered as an annotation (`↳`), not
   as an accordion, because it has nothing to open.
 
-**Panels do not nest.** A body is leaf detail. If the detail needs its own flow,
-that flow belongs in the spine. This is the invariant that keeps the parse
-unambiguous — the same `-` can mean "step" in the spine and "bullet" inside a
-panel body because the two never mix.
+**Panels nest.** A `>` inside a body opens a panel inside that panel:
+
+```
+- Database.where(user_id:)
+  > SELECT * FROM expenses
+    WHERE user_id = $1
+    LIMIT 25
+    > keyset, not OFFSET
+      OFFSET drifts when rows land mid-scan
+```
+
+Nested bodies stop where their indentation ends, and each panel dedents to its
+own margin, so a nested body lines up under its own opener. Depth is unlimited;
+in practice two levels is where a diagram stops being scannable.
+
+The cost of nesting: a body line whose first non-space character is `>` is
+structure, not text. Write `\>` for a literal one:
+
+```
+  > shell transcript
+    $ ls
+    \> this line really starts with a greater-than
+```
+
+`-` keeps its double life intact — a step in the spine, a bullet inside a body —
+because only `>` changed meaning inside bodies.
 
 ### Source anchors
 
@@ -124,8 +152,9 @@ status bar names the first offending line.
    level down.
 3. **Name the discriminator.** A branch either names its gate or names its
    worlds. Never both, never neither.
-4. **Depth is meaning.** If you need three levels of detail, one of them is a
-   panel.
+4. **Depth is meaning.** Panels nest, but two levels is usually the whole story:
+   what happened, then why. A third level is a signal that the diagram is doing
+   a document's job.
 5. **The file must read well unrendered.** That is why `-` stayed.
 
 ## Playground

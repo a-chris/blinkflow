@@ -26,18 +26,19 @@ GET v3/expenses
 ```
 
 - `-` step, `!` failure, `~` async, `<` return
-- `>` collapsed detail panel; the peek line stays visible, the body opens on click
+- `>` collapsed detail panel rendered as a badge carrying its own `>`; the peek line stays visible, the body opens on click
+  (a `>` inside a body opens a nested panel)
 - `gate:` / `yes:` / `no:` / `else:` / `err:` are reserved; any other
   `label:` is a free-form arm (a value match under a gate, a path split without one)
 - trailing `@path:line` opens that file in your editor
-- indentation is the tree; panels never nest
+- indentation is the tree; panels nest, and `\>` escapes a literal `>` inside a body
 
 ## Playground
 
 | pane | |
 |---|---|
 | left | CodeMirror editor with lightgram highlighting |
-| right | live diagram — click `▸` for detail, click `↗` to jump to source |
+| right | live diagram — click the `>` badge for detail, `↗` to jump to source |
 
 Toolbar: **sample** (three worked examples), **open in** (VS Code, Cursor, Zed,
 Sublime, `file://`), **base** (the directory anchors are resolved against),

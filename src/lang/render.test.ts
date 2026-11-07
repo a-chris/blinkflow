@@ -36,18 +36,24 @@ describe('render', () => {
     const toggle = root.querySelector<HTMLButtonElement>('.lg-panel-toggle')!;
     const body = root.querySelector<HTMLElement>('.lg-panel-body')!;
     const panel = root.querySelector<HTMLElement>('.lg-panel')!;
-    const chevron = toggle.querySelector('.lg-chevron')!;
+    const glyph = toggle.querySelector('.lg-panel-glyph')!;
+
+    expect(glyph.textContent).toBe('>');
 
     toggle.click();
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(body.hidden).toBe(false);
     expect(panel.classList.contains('is-open')).toBe(true);
-    expect(chevron.textContent).toBe('▾');
 
     toggle.click();
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(body.hidden).toBe(true);
-    expect(chevron.textContent).toBe('▸');
+    expect(panel.classList.contains('is-open')).toBe(false);
+  });
+
+  it('shows how many lines are inside a collapsed panel', () => {
+    const root = renderFlow(parse(['- step', '  > peek', '    one', '    two', '    three'].join('\n')), options);
+    expect(root.querySelector('.lg-panel-count')?.textContent).toBe('3');
   });
 
   it('renders a peek-only panel as a static line, not a button', () => {
@@ -85,6 +91,96 @@ describe('render', () => {
     expect(root.querySelector<HTMLAnchorElement>('.lg-anchor')!.href).toBe(
       'subl://open?url=file:///root/app/charge.rb&line=9',
     );
+  });
+
+  it('links an anchor written on a peek line, without toggling the panel', () => {
+    const onAnchorClick = vi.fn();
+    const doc = ['- step', '  > build query  @app/services/get_expenses.rb:12', '    body line'].join('\n');
+    const root = renderFlow(parse(doc), { ...options, onAnchorClick });
+
+    const link = root.querySelector<HTMLAnchorElement>('.lg-panel-head .lg-anchor')!;
+    expect(link).not.toBeNull();
+    expect(link.href).toBe('vscode://file/root/repo/app/services/get_expenses.rb:12:1');
+    expect(link.textContent).toBe('get_expenses.rb:12');
+    expect(root.querySelector('.lg-peek')?.textContent).toBe('build query');
+
+    link.click();
+    expect(onAnchorClick).toHaveBeenCalledTimes(1);
+    expect(onAnchorClick.mock.calls[0][1]).toEqual({
+      path: 'app/services/get_expenses.rb',
+      line: 12,
+    });
+
+    const toggle = root.querySelector<HTMLButtonElement>('.lg-panel-toggle')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(root.querySelector<HTMLElement>('.lg-panel-body')!.hidden).toBe(true);
+  });
+
+  it('links an anchor on a peek-only panel', () => {
+    const root = renderFlow(parse(['- step', '  > see @app/models/expense.rb:41'].join('\n')), options);
+    expect(root.querySelector('.lg-panel-toggle')).toBeNull();
+    expect(root.querySelector<HTMLAnchorElement>('.lg-panel-static .lg-anchor')!.href).toBe(
+      'vscode://file/root/repo/app/models/expense.rb:41:1',
+    );
+  });
+
+  it('renders panels and children in the order they were written', () => {
+    const doc = ['- step', '  > first note', '    note body', '  - child', '> second note', '  note body'].join(
+      '\n',
+    );
+    const root = renderFlow(parse(doc), options);
+    const own = root.querySelector('.lg-node > .lg-main > .lg-content')!;
+    const order = Array.from(own.children).map((n) =>
+      n.classList.contains('lg-panel') ? n.querySelector('.lg-peek')?.textContent : n.querySelector('.lg-text')?.textContent,
+    );
+    expect(order).toEqual(['first note', 'child', 'second note']);
+  });
+
+  it('renders a nested accordion inside the outer body', () => {
+    const doc = ['- step', '  > outer peek', '    intro', '    > inner peek', '      SELECT 1', '    outro'].join('\n');
+    const root = renderFlow(parse(doc), options);
+
+    const outerBody = root.querySelector<HTMLElement>('.lg-panel-body')!;
+    const inner = outerBody.querySelector<HTMLElement>('.lg-panel')!;
+    expect(inner).not.toBeNull();
+    expect(inner.querySelector('.lg-peek')?.textContent).toBe('inner peek');
+
+    const innerBody = inner.querySelector<HTMLElement>('.lg-panel-body')!;
+    expect(innerBody.hidden).toBe(true);
+    expect(innerBody.textContent).toContain('SELECT 1');
+  });
+
+  it('keeps text runs around a nested panel in order', () => {
+    const doc = ['- step', '  > outer', '    intro', '    > inner', '      body', '    outro'].join('\n');
+    const root = renderFlow(parse(doc), options);
+    const outerBody = root.querySelector<HTMLElement>('.lg-panel-body')!;
+    const shape = Array.from(outerBody.children).map((n) =>
+      n.tagName === 'PRE' ? `pre:${n.textContent}` : `panel:${n.querySelector('.lg-peek')?.textContent}`,
+    );
+    expect(shape).toEqual(['pre:intro', 'panel:inner', 'pre:outro']);
+  });
+
+  it('toggles a nested panel without collapsing the outer one', () => {
+    const doc = ['- step', '  > outer', '    intro', '    > inner', '      body'].join('\n');
+    const root = renderFlow(parse(doc), options);
+    const outerToggle = root.querySelector<HTMLButtonElement>('.lg-panel-toggle')!;
+    outerToggle.click();
+    expect(outerToggle.getAttribute('aria-expanded')).toBe('true');
+
+    const innerToggle = root.querySelectorAll<HTMLButtonElement>('.lg-panel-toggle')[1]!;
+    innerToggle.click();
+    expect(innerToggle.getAttribute('aria-expanded')).toBe('true');
+    expect(outerToggle.getAttribute('aria-expanded')).toBe('true');
+    expect(root.querySelectorAll<HTMLElement>('.lg-panel-body')[1].hidden).toBe(false);
+  });
+
+  it('opens nested panels with expand all', () => {
+    const doc = ['- step', '  > outer', '    > inner', '      body'].join('\n');
+    const root = renderFlow(parse(doc), options);
+    setAllPanels(root, true);
+    const bodies = Array.from(root.querySelectorAll<HTMLElement>('.lg-panel-body'));
+    expect(bodies).toHaveLength(2);
+    expect(bodies.every((b) => !b.hidden)).toBe(true);
   });
 
   it('shows an empty state', () => {

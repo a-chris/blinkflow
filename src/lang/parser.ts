@@ -30,11 +30,20 @@ export interface Anchor {
   column?: number;
 }
 
+export type PanelBodyItem =
+  | { kind: 'text'; text: string; line: number }
+  | { kind: 'panel'; panel: Panel; line: number };
+
 export interface Panel {
   /** Summary shown while collapsed. */
   peek: string;
-  /** Raw lines, dedented. Never parsed. */
-  body: string[];
+  /** A source anchor written at the end of the peek line. */
+  anchor?: Anchor;
+  /**
+   * Body in source order: raw text lines, and panels nested with `>`.
+   * Text keeps its relative indentation, minus the body's common margin.
+   */
+  body: PanelBodyItem[];
   line: number;
 }
 
@@ -113,12 +122,21 @@ function isPanelLine(body: string): boolean {
   return body === '>' || body.startsWith('> ') || body.startsWith('>\t');
 }
 
-function dedent(lines: string[]): string[] {
-  const out = [...lines];
-  while (out.length > 0 && out[out.length - 1].trim() === '') out.pop();
-  const indents = out.filter((l) => l.trim() !== '').map((l) => measure(l).indent);
-  const min = indents.length > 0 ? Math.min(...indents) : 0;
-  return out.map((l) => (l.trim() === '' ? '' : l.slice(min)));
+interface RawLine {
+  indent: number;
+  /** The original line, indentation included. */
+  raw: string;
+  line: number;
+}
+
+function trimTrailingBlank(items: PanelBodyItem[]): PanelBodyItem[] {
+  const out = [...items];
+  while (out.length > 0) {
+    const last = out[out.length - 1];
+    if (last.kind !== 'text' || last.text.trim() !== '') break;
+    out.pop();
+  }
+  return out;
 }
 
 function classify(body: string): Classified {
@@ -201,6 +219,74 @@ function extractAnchor(text: string): { text: string; anchor?: Anchor } {
   return { text: kept, anchor };
 }
 
+/** Index where the lines opened by `openerIndent` stop belonging to it. */
+function boundOf(raw: RawLine[], start: number, openerIndent: number): number {
+  let end = start;
+  while (end < raw.length) {
+    const line = raw[end];
+    if (line.raw.trim() !== '' && line.indent <= openerIndent) break;
+    end += 1;
+  }
+  return end;
+}
+
+/**
+ * Build one panel from the raw lines between `start` and `end`.
+ *
+ * Each panel dedents to its own margin, so a nested body lines up under its own
+ * opener. A line whose first non-space character is `>` opens a nested panel;
+ * everything else stays raw text, so `\>` is available for a literal `>`.
+ */
+function buildPanel(
+  peek: string,
+  anchor: Anchor | undefined,
+  raw: RawLine[],
+  start: number,
+  end: number,
+  line: number,
+): Panel {
+  const slice = raw.slice(start, end);
+  const filled = slice.filter((l) => l.raw.trim() !== '');
+  const base = filled.length > 0 ? Math.min(...filled.map((l) => l.indent)) : 0;
+
+  const items: PanelBodyItem[] = [];
+  let index = start;
+
+  while (index < end) {
+    const current = raw[index];
+    const text = current.raw.slice(base).trimEnd();
+
+    if (text === '') {
+      items.push({ kind: 'text', text: '', line: current.line });
+      index += 1;
+      continue;
+    }
+
+    if (text.startsWith('>')) {
+      const { text: nestedPeek, anchor: nestedAnchor } = extractAnchor(text.slice(1).trim());
+      const nestedEnd = boundOf(raw, index + 1, current.indent);
+      items.push({
+        kind: 'panel',
+        panel: buildPanel(nestedPeek, nestedAnchor, raw, index + 1, nestedEnd, current.line),
+        line: current.line,
+      });
+      index = nestedEnd;
+      continue;
+    }
+
+    items.push({
+      kind: 'text',
+      text: text.startsWith('\\>') ? text.slice(1) : text,
+      line: current.line,
+    });
+    index += 1;
+  }
+
+  const panel: Panel = { peek, body: trimTrailingBlank(items), line };
+  if (anchor) panel.anchor = anchor;
+  return panel;
+}
+
 export function parse(source: string): ParseResult {
   const issues: ParseIssue[] = [];
   const roots: LNode[] = [];
@@ -227,36 +313,40 @@ export function parse(source: string): ParseResult {
     }
 
     if (isPanelLine(body)) {
-      const peek = body.slice(1).trim();
+      const { text: peek, anchor: peekAnchor } = extractAnchor(body.slice(1).trim());
+      // Attach to the nearest line above at the same or a shallower indent —
+      // not to the nearest ancestor. A panel written between siblings belongs
+      // to the sibling above it, so it renders where it was written.
       let target: LNode | undefined;
-      for (let depth = stack.length - 1; depth >= 0; depth -= 1) {
-        if (stack[depth].indent < indent) {
-          target = stack[depth];
+      for (let seen = nodes.length - 1; seen >= 0; seen -= 1) {
+        if (nodes[seen].indent <= indent) {
+          target = nodes[seen];
           break;
         }
       }
       if (!target) {
         issues.push({
           line: lineNo,
-          message: 'panel `>` has no node above it — indent it under the step it describes',
+          message: 'panel `>` has no line above it — indent it under the step it describes',
           severity: 'error',
         });
         continue;
       }
 
-      const bodyLines: string[] = [];
+      const raw: RawLine[] = [];
       while (index < lines.length) {
         const next = lines[index];
         if (next.trim() === '') {
-          bodyLines.push('');
+          raw.push({ indent: -1, raw: '', line: index + 1 });
           index += 1;
           continue;
         }
-        if (measure(next).indent <= indent) break;
-        bodyLines.push(next);
+        const measured = measure(next);
+        if (measured.indent <= indent) break;
+        raw.push({ indent: measured.indent, raw: next.trimEnd(), line: index + 1 });
         index += 1;
       }
-      target.panels.push({ peek, body: dedent(bodyLines), line: lineNo });
+      target.panels.push(buildPanel(peek, peekAnchor, raw, 0, raw.length, lineNo));
       continue;
     }
 
@@ -294,6 +384,24 @@ export function parse(source: string): ParseResult {
   return { roots, nodes, issues };
 }
 
+/** Panels and child nodes share one source order. */
+export type ContentItem =
+  | { kind: 'panel'; line: number; panel: Panel }
+  | { kind: 'node'; line: number; node: LNode };
+
+/**
+ * Merge a node's panels and children back into the order they were written.
+ * A panel that appears above the children belongs above them; one written
+ * further down stays down.
+ */
+export function contentOf(node: LNode): ContentItem[] {
+  const items: ContentItem[] = [
+    ...node.panels.map((panel) => ({ kind: 'panel' as const, line: panel.line, panel })),
+    ...node.children.map((child) => ({ kind: 'node' as const, line: child.line, node: child })),
+  ];
+  return items.sort((a, b) => a.line - b.line);
+}
+
 export interface FlowStats {
   nodes: number;
   panels: number;
@@ -302,11 +410,22 @@ export interface FlowStats {
   hints: number;
 }
 
+function countPanels(panels: Panel[]): number {
+  let total = 0;
+  for (const panel of panels) {
+    total += 1;
+    for (const item of panel.body) {
+      if (item.kind === 'panel') total += countPanels([item.panel]);
+    }
+  }
+  return total;
+}
+
 export function stats(result: ParseResult): FlowStats {
   let panels = 0;
   let arms = 0;
   for (const node of result.nodes) {
-    panels += node.panels.length;
+    panels += countPanels(node.panels);
     if (node.kind === 'arm') arms += 1;
   }
   return {

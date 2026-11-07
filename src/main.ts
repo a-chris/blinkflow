@@ -89,7 +89,7 @@ function render(): void {
   const flow = renderFlow(result, {
     editor: editorId,
     baseDir,
-    onAnchorClick: (url, _node, anchor) => {
+    onAnchorClick: (url, anchor) => {
       if (baseDir.trim() === '') {
         toast(`set base to your repo root to open ${displayRef(anchor)}`);
         baseInput.focus();

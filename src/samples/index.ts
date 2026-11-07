@@ -12,7 +12,7 @@ GET v3/expenses
   gate: permission expenses.read
     yes:
       - Services::GetExpenses.call(user_id)   @app/services/get_expenses.rb:12
-        > AR query builder — clamps per_page, opaque cursor
+        > AR query builder — clamps per_page   @app/services/get_expenses.rb:34
           - per_page clamped to 1..100, default 25
           - cursor = base64 of (created_at, id): no offset pagination
           - the table is append-heavy, so offsets drift under load
@@ -22,6 +22,10 @@ GET v3/expenses
             ORDER BY created_at DESC, id DESC
             LIMIT 25
             -- index: expenses_user_id_created_at_idx  ~1.2ms p50
+            > keyset, not OFFSET
+              OFFSET drifts when rows land mid-scan: page 2 would repeat a row
+              the cursor is (created_at, id), so page 2 starts exactly after
+              page 1's last row — stable under inserts, no count(*) needed
       - 200 application/json
         > { data: [...], next_cursor: "eyJjcmVhdGVkX2F0IjoiLi4uIn0=" }
     no:
