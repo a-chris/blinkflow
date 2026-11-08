@@ -158,6 +158,7 @@ backend/               the card server (Go, standard library only)
   internal/og/         the card rules
   internal/web/        routing: payload pages, dev proxy, static files
 testdata/og/           fixtures both languages assert against
+.github/workflows/     the two test suites, the image build and its publish to GHCR
 Makefile               dev, test, build, image
 ```
 

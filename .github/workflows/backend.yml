@@ -1,0 +1,62 @@
+---
+# ============================================================
+# Blinkflow — Backend tests
+# The Go side is standard library only, so there is no database
+# service and no module download to speak of: vet, then the test
+# suite. The fixture suite reads testdata/og, which is why that
+# folder is a trigger.
+# ============================================================
+name: Backend tests
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "testdata/**"
+      - ".github/workflows/backend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "testdata/**"
+      - ".github/workflows/backend.yml"
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # Whatever backend/go.mod asks for, so the toolchain is not a second
+          # place to forget to bump.
+          go-version-file: backend/go.mod
+          # No dependencies to cache.
+          cache: false
+
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "these files are not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        # -count=1 so a cached result never stands in for a real run.
+        run: go test ./... -count=1

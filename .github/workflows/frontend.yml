@@ -1,0 +1,58 @@
+---
+# ============================================================
+# Blinkflow — Frontend tests
+# Typechecks, builds and runs the Vitest suite. The build is
+# part of the check on purpose: `npm run build` is `tsc --noEmit`
+# followed by Vite, so a type error fails here rather than at
+# deploy time.
+#
+# testdata/ is a trigger too: the preview tests assert against the
+# fixtures shared with the Go side, so a change there can break
+# this suite without a single frontend file moving.
+# ============================================================
+name: Frontend tests
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "testdata/**"
+      - ".github/workflows/frontend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "testdata/**"
+      - ".github/workflows/frontend.yml"
+
+# A pull request that is pushed to twice only needs the newest run.
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck and build
+        run: npm run build
+
+      - name: Test
+        run: npm test

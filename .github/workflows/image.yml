@@ -1,0 +1,173 @@
+---
+# ============================================================
+# Blinkflow — Container image
+#
+# Two jobs, in this order for a reason:
+#
+#   build    compiles one amd64 image, loads it, and runs it —
+#            health, app shell, hashed asset, an embedded share
+#            link, and the read-only rule. An image that pushes
+#            but does not serve is worthless, so this gates the
+#            publish.
+#   publish  rebuilds multi-arch and pushes to GHCR. No QEMU:
+#            both Dockerfile stages run on the build platform and
+#            Go cross-compiles, so arm64 costs seconds, not an
+#            emulated toolchain.
+# ============================================================
+name: Image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "LICENSE"
+      - "frontend/**"
+      - "backend/**"
+      - ".github/workflows/image.yml"
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: Build and run the image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # GHCR rejects uppercase, and github.repository is whatever the repo is called.
+      - name: Resolve image name
+        run: echo "IMAGE=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          # Loaded into the local daemon so the next step can run it. The same
+          # cache is reused by the publish job.
+          load: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE }}:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run the image
+        env:
+          # A real payload: POST v3/checkout with a gate, an arm and a panel.
+          PAYLOAD: c1.RY1BCsIwEEX3PcWnK13YqHWVhQgeoIJeIJ2MbbA2ZSZWRLy7UBV3H97j_UN1PGEsDbVMl3hLGdC4xBYDyzWohtjjx4q7hMQZADxY7TSABSrxLGrtXtglLsh13YycpDmAnRsGoyxjIFYTJ9PQR5TartbfCrAFtU4aVqSWQU78hPr4P9osSzzBIlEs8nOUOnjPfY5X9gY
+        run: |
+          set -euo pipefail
+          image="$REGISTRY/$IMAGE:ci"
+          docker run -d --name blinkflow -p 8080:8080 \
+            -e BLINKFLOW_PUBLIC_ORIGIN=https://example.com \
+            "$image"
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          test "$(curl -fsS http://127.0.0.1:8080/healthz)" = "ok"
+
+          # The app shell, and the hashed asset it actually points at — a wrong
+          # asset path would still return 200 for "/" and a blank page after it.
+          curl -fsS http://127.0.0.1:8080/ > /tmp/shell.html
+          grep -q 'id="editor"' /tmp/shell.html
+          asset="$(grep -o '/assets/[A-Za-z0-9_.-]*\.js' /tmp/shell.html | head -1)"
+          test -n "$asset"
+          curl -fsS -o /dev/null "http://127.0.0.1:8080$asset"
+
+          # An embedded link is answered with that document's own metadata, on
+          # the origin the environment says it lives on.
+          curl -fsS "http://127.0.0.1:8080/$PAYLOAD" > /tmp/page.html
+          grep -q '<title>POST v3/checkout — Blinkflow</title>' /tmp/page.html
+          grep -q 'og:description" content="6 steps' /tmp/page.html
+          grep -q 'canonical" href="https://example.com/c1\.' /tmp/page.html
+
+          # One endpoint policy: read-only.
+          status="$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:8080/$PAYLOAD")"
+          test "$status" = "405"
+
+          echo "image serves the app, the assets and the cards"
+
+      - name: Container logs
+        if: always()
+        run: docker logs blinkflow || true
+
+  publish:
+    name: Publish to GHCR
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve image name
+        run: echo "IMAGE=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          tags: |
+            type=sha,format=short
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/v') }}
+          labels: |
+            org.opencontainers.image.title=Blinkflow
+            org.opencontainers.image.description=A tiny text notation for flows, with collapsible detail and previewable share links
+            org.opencontainers.image.licenses=Elastic-2.0
+            org.opencontainers.image.url=https://blinkflow.live
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          {
+            echo "### Image published"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo
+            echo "Digest: \`${{ steps.meta.outputs.digest }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
