@@ -106,6 +106,31 @@ Deployed, the same binary serves the built site:
 Set `-public-origin` in any deployment: it makes canonical URLs and embedded links independent of whatever headers a request arrives with.
 Without it the server uses the request's own `Host`, and ignores forwarded headers unless `-trust-proxy` says otherwise — a client must not be able to choose the origin a page claims.
 
+### Container
+
+`make image` builds the same three-stage image CI publishes.
+Node compiles the site, Go cross-compiles the server, and the runtime layer carries only the binary and the built assets in a distroless image — no shell, no toolchain, no sources.
+The server serves those assets itself, so a container is one process on one port.
+
+```bash
+make image-run                       # build, then serve on :8080
+docker run -p 8080:8080 -e BLINKFLOW_PUBLIC_ORIGIN=https://blinkflow.live blinkflow:dev
+```
+
+Every deployment flag also reads an environment variable, because a compose file or an image cannot pass arguments; a flag still wins when it is given.
+The image sets the two a container needs: `BLINKFLOW_ADDR=0.0.0.0` and `BLINKFLOW_STATIC=/app/dist`.
+
+| variable | overrides |
+|---|---|
+| `BLINKFLOW_ADDR` | `-addr` |
+| `BLINKFLOW_PORT` | `-port` |
+| `BLINKFLOW_STATIC` | `-static` |
+| `BLINKFLOW_PUBLIC_ORIGIN` | `-public-origin` |
+| `BLINKFLOW_TRUST_PROXY` | `-trust-proxy` |
+| `BLINKFLOW_MAX_PAYLOAD` | `-max-payload` |
+
+There is no shell and no `curl` in the image, so `/healthz` is what an orchestrator polls.
+
 ### Local configuration
 
 A tunnel hostname or a public origin is nobody else's business, so it lives in `frontend/.env.local` (gitignored; see `.env.example`):
@@ -133,7 +158,7 @@ backend/               the card server (Go, standard library only)
   internal/og/         the card rules
   internal/web/        routing: payload pages, dev proxy, static files
 testdata/og/           fixtures both languages assert against
-Makefile               dev, test, build
+Makefile               dev, test, build, image
 ```
 
 No framework: the renderer builds DOM directly, which keeps the language portable if you later want a CLI, a markdown plugin, or a static-site renderer.

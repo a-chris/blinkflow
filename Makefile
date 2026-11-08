@@ -8,7 +8,7 @@ BACKEND := backend
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev frontend backend test test-frontend test-backend build fmt
+.PHONY: help install dev frontend backend test test-frontend test-backend build fmt image image-run
 
 help: ## this list
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -51,3 +51,14 @@ build: ## typecheck the frontend, then build both halves
 
 fmt: ## gofmt the server
 	cd $(BACKEND) && gofmt -w .
+
+# What CI publishes, built the same way: the site compiled by Node, the server
+# cross-compiled by Go, both dropped into a shell-less runtime image.
+IMAGE ?= blinkflow:dev
+
+image: ## build the container image
+	docker build -t $(IMAGE) .
+
+image-run: image ## build the image and serve it on $(PORT)
+	@echo "blinkflow image → http://localhost:$(PORT)"
+	docker run --rm -it -p $(PORT):8080 $(IMAGE)

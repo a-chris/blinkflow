@@ -30,16 +30,20 @@ import (
 )
 
 func main() {
+	// Every flag a deployment has to set also reads an environment variable, so a
+	// container is configured by its environment and a flag still wins when one
+	// is passed. The defaults are the developer story: a loopback listener in
+	// front of frontend/dist, exactly what `make dev` uses.
 	var (
-		addr       = flag.String("addr", "127.0.0.1", "interface to listen on; loopback by default, because this server reads untrusted links")
-		port       = flag.Int("port", 8080, "port to listen on")
+		addr       = flag.String("addr", envString("BLINKFLOW_ADDR", "127.0.0.1"), "interface to listen on; loopback by default, because this server reads untrusted links")
+		port       = flag.Int("port", envInt("BLINKFLOW_PORT", 8080), "port to listen on")
 		dev        = flag.Bool("dev", false, "proxy to the Vite dev server and disable caching")
 		proxy      = flag.String("proxy", "http://localhost:5174", "Vite dev server address (dev only)")
 		shell      = flag.String("shell", "../frontend/index.html", "app shell served in dev")
-		static     = flag.String("static", "../frontend/dist", "built site served outside dev")
-		maxPayload = flag.Int("max-payload", 64<<10, "largest decoded document, in bytes")
-		publicURL  = flag.String("public-origin", "", "origin every generated URL claims, e.g. https://blinkflow.example.com")
-		trustProxy = flag.Bool("trust-proxy", false, "believe X-Forwarded-Proto/-Host; only behind a proxy you control")
+		static     = flag.String("static", envString("BLINKFLOW_STATIC", "../frontend/dist"), "built site served outside dev")
+		maxPayload = flag.Int("max-payload", envInt("BLINKFLOW_MAX_PAYLOAD", 64<<10), "largest decoded document, in bytes")
+		publicURL  = flag.String("public-origin", envString("BLINKFLOW_PUBLIC_ORIGIN", ""), "origin every generated URL claims, e.g. https://blinkflow.example.com")
+		trustProxy = flag.Bool("trust-proxy", envBool("BLINKFLOW_TRUST_PROXY", false), "believe X-Forwarded-Proto/-Host; only behind a proxy you control")
 	)
 	flag.Parse()
 
@@ -97,4 +101,41 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = server.Shutdown(ctx)
+}
+
+// envString returns the environment value, or the fallback when it is unset or
+// empty. Empty means unset: a compose file that interpolates a missing variable
+// must not silently disable a default.
+func envString(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok && value != "" {
+		return value
+	}
+	return fallback
+}
+
+// envInt reads a numeric setting, and refuses to guess: a typo such as
+// BLINKFLOW_PORT=808O has to stop the container, not fall back to 8080 and leave
+// the operator wondering which port is listening.
+func envInt(key string, fallback int) int {
+	value, ok := os.LookupEnv(key)
+	if !ok || value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		log.Fatalf("%s=%q is not a number", key, value)
+	}
+	return parsed
+}
+
+func envBool(key string, fallback bool) bool {
+	value, ok := os.LookupEnv(key)
+	if !ok || value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		log.Fatalf("%s=%q is not true or false", key, value)
+	}
+	return parsed
 }

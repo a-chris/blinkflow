@@ -1,0 +1,14 @@
+# What the build must not see. Everything here is either generated, local
+# configuration, or history — copying it in would slow the build down and, in
+# the case of .env.local, leak a hostname into a public image.
+
+.git
+.github
+.vscode
+
+**/node_modules
+frontend/dist
+backend/bin
+
+plan.md
+**/.env.local
