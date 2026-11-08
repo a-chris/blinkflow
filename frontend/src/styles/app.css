@@ -265,31 +265,31 @@ body.is-dragging {
 
 /* ---------- flow ---------- */
 
-.lg-flow {
+.bf-flow {
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.62;
   color: var(--text);
 }
 
-.lg-roots {
+.bf-roots {
   gap: 7px;
 }
 
-.lg-content {
+.bf-content {
   display: flex;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
 }
 
-.lg-node {
+.bf-node {
   display: flex;
   gap: 9px;
   min-width: 0;
 }
 
-.lg-marker {
+.bf-marker {
   position: relative;
   flex: 0 0 15px;
   display: flex;
@@ -299,7 +299,7 @@ body.is-dragging {
 }
 
 /* the spine: one continuous rail per sibling group */
-.lg-marker::before {
+.bf-marker::before {
   content: "";
   position: absolute;
   left: 50%;
@@ -310,17 +310,17 @@ body.is-dragging {
   background: var(--line);
 }
 
-.lg-node.lg-is-last > .lg-marker::before {
+.bf-node.bf-is-last > .bf-marker::before {
   bottom: auto;
   height: 12px;
 }
 
-.lg-node[data-kind="gate"] > .lg-marker::before,
-.lg-node[data-kind="arm"] > .lg-marker::before {
+.bf-node[data-kind="gate"] > .bf-marker::before,
+.bf-node[data-kind="arm"] > .bf-marker::before {
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0.16), var(--line));
 }
 
-.lg-glyph {
+.bf-glyph {
   position: relative;
   z-index: 1;
   background: var(--glyph-bg, var(--bg-elev));
@@ -329,12 +329,12 @@ body.is-dragging {
   line-height: 1.72;
 }
 
-.lg-main {
+.bf-main {
   min-width: 0;
   flex: 1;
 }
 
-.lg-row {
+.bf-row {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -345,28 +345,28 @@ body.is-dragging {
   transition: background 0.1s;
 }
 
-.lg-node:hover > .lg-main > .lg-row {
+.bf-node:hover > .bf-main > .bf-row {
   background: rgba(255, 255, 255, 0.024);
 }
 
-.lg-text {
+.bf-text {
   color: var(--text);
   overflow-wrap: anywhere;
 }
 
-.lg-node[data-kind="failure"] .lg-text {
+.bf-node[data-kind="failure"] .bf-text {
   color: #ffa198;
 }
 
-.lg-node[data-kind="async"] .lg-text {
+.bf-node[data-kind="async"] .bf-text {
   color: #d3b7f7;
 }
 
-.lg-node[data-kind="return"] .lg-text {
+.bf-node[data-kind="return"] .bf-text {
   color: #9ecbff;
 }
 
-.lg-node[data-kind="actor"] .lg-text {
+.bf-node[data-kind="actor"] .bf-text {
   color: var(--accent);
   border: 1px solid rgba(126, 231, 135, 0.28);
   background: rgba(126, 231, 135, 0.07);
@@ -375,35 +375,35 @@ body.is-dragging {
   font-size: 11.5px;
 }
 
-.lg-node[data-kind="step"] > .lg-marker .lg-glyph {
+.bf-node[data-kind="step"] > .bf-marker .bf-glyph {
   color: #6e7b8a;
 }
 
-.lg-node[data-kind="failure"] > .lg-marker .lg-glyph {
+.bf-node[data-kind="failure"] > .bf-marker .bf-glyph {
   color: var(--red);
 }
 
-.lg-node[data-kind="async"] > .lg-marker .lg-glyph {
+.bf-node[data-kind="async"] > .bf-marker .bf-glyph {
   color: var(--violet);
 }
 
-.lg-node[data-kind="return"] > .lg-marker .lg-glyph {
+.bf-node[data-kind="return"] > .bf-marker .bf-glyph {
   color: var(--blue);
 }
 
-.lg-node[data-kind="actor"] > .lg-marker .lg-glyph {
+.bf-node[data-kind="actor"] > .bf-marker .bf-glyph {
   color: var(--accent);
 }
 
-.lg-node[data-kind="gate"] > .lg-marker .lg-glyph {
+.bf-node[data-kind="gate"] > .bf-marker .bf-glyph {
   color: var(--amber);
 }
 
-.lg-node[data-kind="arm"] > .lg-marker .lg-glyph {
+.bf-node[data-kind="arm"] > .bf-marker .bf-glyph {
   color: var(--cyan);
 }
 
-.lg-arm-label {
+.bf-arm-label {
   font-size: 11.5px;
   font-weight: 600;
   color: var(--cyan);
@@ -414,42 +414,42 @@ body.is-dragging {
   white-space: nowrap;
 }
 
-.lg-node[data-kind="gate"] .lg-arm-label {
+.bf-node[data-kind="gate"] .bf-arm-label {
   color: var(--amber);
   border-color: rgba(227, 179, 65, 0.3);
   background: rgba(227, 179, 65, 0.08);
 }
 
-.lg-node[data-reserved="yes"] .lg-arm-label {
+.bf-node[data-reserved="yes"] .bf-arm-label {
   color: var(--accent);
   border-color: rgba(126, 231, 135, 0.3);
   background: rgba(126, 231, 135, 0.07);
 }
 
-.lg-node[data-reserved="no"] .lg-arm-label,
-.lg-node[data-reserved="err"] .lg-arm-label {
+.bf-node[data-reserved="no"] .bf-arm-label,
+.bf-node[data-reserved="err"] .bf-arm-label {
   color: #ffa198;
   border-color: rgba(255, 123, 114, 0.3);
   background: rgba(255, 123, 114, 0.07);
 }
 
-.lg-node[data-reserved="else"] .lg-arm-label {
+.bf-node[data-reserved="else"] .bf-arm-label {
   color: var(--text-dim);
   border-color: var(--line-strong);
   background: rgba(255, 255, 255, 0.04);
 }
 
-.lg-node[data-reserved="err"] .lg-text {
+.bf-node[data-reserved="err"] .bf-text {
   color: #ffc4bd;
 }
 
 /* ---------- panels ---------- */
 
-.lg-panel {
+.bf-panel {
   margin: 5px 0 8px;
 }
 
-.lg-panel-head {
+.bf-panel-head {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -458,7 +458,7 @@ body.is-dragging {
 
 /* The accordion is the main block of the language, not a footnote: a lifted
    card with the `>` operator as its own tile. */
-.lg-panel-toggle {
+.bf-panel-toggle {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -479,18 +479,18 @@ body.is-dragging {
   transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
 }
 
-.lg-panel-toggle:hover {
+.bf-panel-toggle:hover {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.05));
   border-color: rgba(255, 255, 255, 0.28);
   box-shadow: 0 3px 14px rgba(0, 0, 0, 0.38);
 }
 
-.lg-panel-toggle:focus-visible {
+.bf-panel-toggle:focus-visible {
   outline: 2px solid rgba(126, 231, 135, 0.6);
   outline-offset: 2px;
 }
 
-.lg-panel-glyph {
+.bf-panel-glyph {
   display: grid;
   place-items: center;
   width: 25px;
@@ -507,24 +507,24 @@ body.is-dragging {
   transition: transform 0.16s ease, background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
 
-.lg-panel-toggle:hover .lg-panel-glyph {
+.bf-panel-toggle:hover .bf-panel-glyph {
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.34);
 }
 
-.lg-panel.is-open > .lg-panel-head > .lg-panel-toggle {
+.bf-panel.is-open > .bf-panel-head > .bf-panel-toggle {
   border-color: rgba(126, 231, 135, 0.36);
   background: linear-gradient(180deg, rgba(126, 231, 135, 0.11), rgba(126, 231, 135, 0.04));
 }
 
-.lg-panel.is-open > .lg-panel-head > .lg-panel-toggle .lg-panel-glyph {
+.bf-panel.is-open > .bf-panel-head > .bf-panel-toggle .bf-panel-glyph {
   transform: rotate(90deg);
   background: rgba(126, 231, 135, 0.17);
   border-color: rgba(126, 231, 135, 0.42);
   color: var(--accent);
 }
 
-.lg-panel-count {
+.bf-panel-count {
   flex: 0 0 auto;
   padding: 0 6px;
   border-radius: 999px;
@@ -536,7 +536,7 @@ body.is-dragging {
   font-variant-numeric: tabular-nums;
 }
 
-.lg-peek {
+.bf-peek {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -544,48 +544,48 @@ body.is-dragging {
   color: var(--text);
 }
 
-.lg-panel-body {
+.bf-panel-body {
   margin: 3px 0 0 4px;
   border-left: 2px solid rgba(255, 255, 255, 0.11);
 }
 
-.lg-panel.is-open > .lg-panel-toggle {
+.bf-panel.is-open > .bf-panel-toggle {
   color: var(--text);
   border-color: rgba(255, 255, 255, 0.16);
 }
 
-.lg-panel.is-open > .lg-panel-body {
+.bf-panel.is-open > .bf-panel-body {
   border-left-color: rgba(126, 231, 135, 0.32);
 }
 
 /* nested accordions sit inside the body, so they need their own rhythm */
-.lg-panel-body > .lg-panel {
+.bf-panel-body > .bf-panel {
   margin: 5px 0 6px;
 }
 
-.lg-panel-body > .lg-panel:last-child {
+.bf-panel-body > .bf-panel:last-child {
   margin-bottom: 0;
 }
 
-.lg-panel-body > .lg-panel > .lg-panel-head > .lg-panel-toggle {
+.bf-panel-body > .bf-panel > .bf-panel-head > .bf-panel-toggle {
   padding: 4px 9px 4px 4px;
   gap: 8px;
   font-size: 12px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.022));
 }
 
-.lg-panel-body > .lg-panel > .lg-panel-head > .lg-panel-toggle .lg-panel-glyph {
+.bf-panel-body > .bf-panel > .bf-panel-head > .bf-panel-toggle .bf-panel-glyph {
   width: 21px;
   height: 21px;
   flex: 0 0 21px;
   font-size: 14px;
 }
 
-.lg-panel-body > .lg-panel.is-open > .lg-panel-body {
+.bf-panel-body > .bf-panel.is-open > .bf-panel-body {
   border-left-color: rgba(108, 182, 255, 0.34);
 }
 
-.lg-pre {
+.bf-pre {
   margin: 0;
   padding: 6px 12px;
   font-family: var(--mono);
@@ -597,7 +597,7 @@ body.is-dragging {
 }
 
 /* a `>` with no body is an annotation, not a closed accordion */
-.lg-panel.lg-panel-static {
+.bf-panel.bf-panel-static {
   margin: 1px 0 5px;
   display: flex;
   align-items: baseline;
@@ -610,13 +610,13 @@ body.is-dragging {
   font-style: italic;
 }
 
-.lg-panel.lg-panel-static .lg-peek {
+.bf-panel.bf-panel-static .bf-peek {
   color: var(--text-faint);
   font-style: italic;
   font-size: 11.5px;
 }
 
-.lg-panel.lg-panel-static::before {
+.bf-panel.bf-panel-static::before {
   content: "↳";
   font-style: normal;
   opacity: 0.6;
@@ -624,7 +624,7 @@ body.is-dragging {
 
 /* ---------- notes ---------- */
 
-.lg-note {
+.bf-note {
   display: grid;
   place-items: center;
   width: 22px;
@@ -640,15 +640,15 @@ body.is-dragging {
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 
-.lg-note:hover,
-.lg-note:focus-visible {
+.bf-note:hover,
+.bf-note:focus-visible {
   background: rgba(240, 196, 116, 0.26);
   border-color: rgba(240, 196, 116, 0.62);
   color: #fff1d0;
   outline: none;
 }
 
-.lg-note-pop {
+.bf-note-pop {
   position: fixed;
   z-index: 60;
   max-width: 340px;
@@ -669,12 +669,12 @@ body.is-dragging {
   pointer-events: none;
 }
 
-.lg-note-pop.is-visible {
+.bf-note-pop.is-visible {
   opacity: 1;
   visibility: visible;
 }
 
-.lg-doc-notes {
+.bf-doc-notes {
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -682,7 +682,7 @@ body.is-dragging {
   padding-left: 1px;
 }
 
-.lg-doc-note {
+.bf-doc-note {
   align-self: flex-start;
   display: flex;
   align-items: baseline;
@@ -699,28 +699,28 @@ body.is-dragging {
   transition: color 0.12s ease;
 }
 
-.lg-note-icon {
+.bf-note-icon {
   display: block;
   width: 13px;
   height: 13px;
 }
 
-.lg-doc-note .lg-note-icon {
+.bf-doc-note .bf-note-icon {
   width: 14px;
   height: 14px;
   color: #ffdc9b;
 }
 
-.lg-doc-note:hover {
+.bf-doc-note:hover {
   color: var(--text-dim);
 }
 
-.lg-doc-note:hover .lg-note-icon {
+.bf-doc-note:hover .bf-note-icon {
   color: #fff1d0;
 }
 
 /* the dialog lives in the top layer, so it styles itself */
-.lg-note-dialog {
+.bf-note-dialog {
   width: max-content;
   max-width: min(560px, 90vw);
   padding: 0;
@@ -732,12 +732,12 @@ body.is-dragging {
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
 }
 
-.lg-note-dialog::backdrop {
+.bf-note-dialog::backdrop {
   background: rgba(4, 6, 10, 0.62);
   backdrop-filter: blur(2px);
 }
 
-.lg-note-head {
+.bf-note-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -750,23 +750,23 @@ body.is-dragging {
   letter-spacing: 0.12em;
 }
 
-.lg-note-glyph {
+.bf-note-glyph {
   display: grid;
   place-items: center;
   color: #ffdc9b;
 }
 
-.lg-note-glyph .lg-note-icon {
+.bf-note-glyph .bf-note-icon {
   width: 12px;
   height: 12px;
 }
 
-.lg-note-close {
+.bf-note-close {
   padding: 2px 8px;
   font-size: 10px;
 }
 
-.lg-note-text {
+.bf-note-text {
   margin: 0;
   padding: 14px 16px 6px;
   font-size: 12.5px;
@@ -775,7 +775,7 @@ body.is-dragging {
   overflow-wrap: anywhere;
 }
 
-.lg-note-line {
+.bf-note-line {
   margin: 0;
   padding: 0 16px 13px;
   color: var(--text-faint);
@@ -784,7 +784,7 @@ body.is-dragging {
 
 /* ---------- anchors ---------- */
 
-.lg-anchor {
+.bf-anchor {
   font-size: 11px;
   color: var(--accent);
   text-decoration: none;
@@ -793,20 +793,20 @@ body.is-dragging {
   padding: 0 1px;
 }
 
-.lg-anchor::before {
+.bf-anchor::before {
   content: "↗";
   margin-right: 3px;
   opacity: 0.65;
 }
 
-.lg-anchor:hover {
+.bf-anchor:hover {
   background: rgba(126, 231, 135, 0.12);
   border-bottom-color: var(--accent);
 }
 
 /* ---------- misc ---------- */
 
-.lg-empty {
+.bf-empty {
   color: var(--text-faint);
   font-size: 12px;
   border: 1px dashed var(--line);
@@ -814,7 +814,7 @@ body.is-dragging {
   padding: 14px 16px;
 }
 
-.lg-toast {
+.bf-toast {
   position: fixed;
   right: 18px;
   bottom: 34px;
@@ -833,7 +833,7 @@ body.is-dragging {
   max-width: 60ch;
 }
 
-.lg-toast.is-visible {
+.bf-toast.is-visible {
   opacity: 1;
   transform: translateY(0);
 }
@@ -866,7 +866,7 @@ body.is-dragging {
 /* ---------- share dialog ---------- */
 
 /* Draws on the note dialog's terms: top layer, own background, mono labels. */
-.lg-share-dialog {
+.bf-share-dialog {
   width: min(430px, 92vw);
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -877,12 +877,12 @@ body.is-dragging {
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
 }
 
-.lg-share-dialog::backdrop {
+.bf-share-dialog::backdrop {
   background: rgba(4, 6, 10, 0.62);
   backdrop-filter: blur(2px);
 }
 
-.lg-share-head {
+.bf-share-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -895,13 +895,13 @@ body.is-dragging {
   letter-spacing: 0.12em;
 }
 
-.lg-share-options {
+.bf-share-options {
   display: grid;
   padding: 6px;
   gap: 4px;
 }
 
-.lg-share-option {
+.bf-share-option {
   display: grid;
   gap: 3px;
   width: 100%;
@@ -913,27 +913,27 @@ body.is-dragging {
   font-family: var(--sans);
 }
 
-.lg-share-option:hover,
-.lg-share-option:focus-visible {
+.bf-share-option:hover,
+.bf-share-option:focus-visible {
   background: #16202c;
   border-color: var(--line-strong);
 }
 
-.lg-share-option:focus-visible {
+.bf-share-option:focus-visible {
   outline: none;
 }
 
-.lg-share-name {
+.bf-share-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
 }
 
-.lg-share-option:hover .lg-share-name {
+.bf-share-option:hover .bf-share-name {
   color: var(--accent);
 }
 
-.lg-share-hint {
+.bf-share-hint {
   font-family: var(--mono);
   font-size: 10.5px;
   color: var(--text-faint);

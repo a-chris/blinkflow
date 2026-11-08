@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"lightgram/backend/internal/flow"
+	"blinkflow/backend/internal/flow"
 )
 
 // The fixtures are shared with the frontend (frontend/src/lang/preview.test.ts).

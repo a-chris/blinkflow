@@ -1,8 +1,8 @@
-# lightgram
+# Blinkflow
 
 *A light diagram language: the file is already most of the picture.*
 
-lightgram is a text notation for flows — API paths, call stacks, user journeys —
+Blinkflow is a text notation for flows — API paths, call stacks, user journeys —
 where **indentation is the only geometry**. You write a spine of lines, add a
 `>` for anything you want to expand later, and the renderer turns it into a
 tree with collapsed detail panels and click-through source links.
@@ -224,7 +224,7 @@ resurrect the snapshot you linked to.
 
 `npm install && npm run dev` → http://localhost:5174
 
-Left pane is a CodeMirror editor with lightgram highlighting; right pane is the
+Left pane is a CodeMirror editor with Blinkflow highlighting; right pane is the
 live render. Panels are collapsed by default, the gutter is draggable, samples
 and settings persist in `localStorage`.
 

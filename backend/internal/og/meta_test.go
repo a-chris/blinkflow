@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"lightgram/backend/internal/flow"
-	"lightgram/backend/internal/og"
+	"blinkflow/backend/internal/flow"
+	"blinkflow/backend/internal/og"
 )
 
 func TestTitlePrefersTheDocumentNote(t *testing.T) {
@@ -23,7 +23,7 @@ func TestTitleFallsBackToTheFirstStep(t *testing.T) {
 }
 
 func TestTitleFallsBackToTheProductName(t *testing.T) {
-	if got := og.FromAnalysis(flow.Analysis{}).Title; got != "lightgram" {
+	if got := og.FromAnalysis(flow.Analysis{}).Title; got != "Blinkflow" {
 		t.Fatalf("got %q", got)
 	}
 }

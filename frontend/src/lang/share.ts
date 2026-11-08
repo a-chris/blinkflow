@@ -17,7 +17,7 @@ const PLAIN = 'p1.';
 /**
  * A versioned payload, whether or not this build understands it. Matching the
  * shape (not just `c1.`) is what lets an old client say "this link needs a newer
- * lightgram" instead of showing an empty editor.
+ * blinkflow" instead of showing an empty editor.
  */
 const VERSIONED = /^[cp][0-9]+\.[A-Za-z0-9_-]+$/;
 
@@ -123,8 +123,8 @@ export async function decodeShare(payload: string): Promise<string> {
 
   throw new ShareError(
     SUPPORTED.test(value) || !VERSIONED.test(value)
-      ? 'this does not look like a lightgram share link'
-      : 'this link needs a newer lightgram',
+      ? 'this does not look like a blinkflow share link'
+      : 'this link needs a newer blinkflow',
   );
 }
 
@@ -138,7 +138,7 @@ export function readShareInput(location: { hash: string; pathname: string }): st
   if (fragment !== '') return fragment;
 
   // The payload is the last segment, not the whole path: the app is allowed to
-  // live under a subpath (`/lightgram/c1.…`), and the server routes by the same
+  // live under a subpath (`/blinkflow/c1.…`), and the server routes by the same
   // rule. Reading only the first segment made the two disagree.
   const segment = location.pathname.replace(/\/+$/, '').split('/').pop() ?? '';
   if (VERSIONED.test(segment)) return segment;

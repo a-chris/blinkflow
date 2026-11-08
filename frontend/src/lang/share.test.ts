@@ -79,7 +79,7 @@ describe('decoding failures', () => {
   });
 
   it('says a newer build made the link, instead of showing an empty document', async () => {
-    await expect(decodeShare('c2.HVTRx8wQ')).rejects.toThrow('needs a newer lightgram');
+    await expect(decodeShare('c2.HVTRx8wQ')).rejects.toThrow('needs a newer blinkflow');
   });
 
   it('rejects damaged base64', async () => {
@@ -111,19 +111,19 @@ describe('readShareInput', () => {
 
   it('ignores an ordinary path', () => {
     expect(readShareInput({ hash: '', pathname: '/' })).toBeNull();
-    expect(readShareInput({ hash: '', pathname: '/lightgram/' })).toBeNull();
+    expect(readShareInput({ hash: '', pathname: '/blinkflow/' })).toBeNull();
     expect(readShareInput({ hash: '', pathname: '/assets/index-Cikaj9Ln.js' })).toBeNull();
     expect(readShareInput({ hash: '', pathname: '/a1.png' })).toBeNull();
   });
 
   it('reads the payload from a mounted subpath, matching the server', () => {
-    expect(readShareInput({ hash: '', pathname: '/lightgram/c1.abc' })).toBe('c1.abc');
+    expect(readShareInput({ hash: '', pathname: '/blinkflow/c1.abc' })).toBe('c1.abc');
     expect(readShareInput({ hash: '', pathname: '/a/b/p1.abc/' })).toBe('p1.abc');
   });
 
   it('still ignores a subpath that carries no payload', () => {
-    expect(readShareInput({ hash: '', pathname: '/lightgram/' })).toBeNull();
-    expect(readShareInput({ hash: '', pathname: '/lightgram/index.html' })).toBeNull();
+    expect(readShareInput({ hash: '', pathname: '/blinkflow/' })).toBeNull();
+    expect(readShareInput({ hash: '', pathname: '/blinkflow/index.html' })).toBeNull();
   });
 
   it('still reads a version it cannot decode, so the user gets an explanation', () => {
@@ -138,9 +138,9 @@ describe('embeddedOrigin', () => {
   });
 
   it('falls back to the page origin when nothing is declared', () => {
-    expect(embeddedOrigin('https://lightgram.example', null)).toBe('https://lightgram.example');
-    expect(embeddedOrigin('https://lightgram.example', '')).toBe('https://lightgram.example');
-    expect(embeddedOrigin('https://lightgram.example', '   ')).toBe('https://lightgram.example');
+    expect(embeddedOrigin('https://blinkflow.example', null)).toBe('https://blinkflow.example');
+    expect(embeddedOrigin('https://blinkflow.example', '')).toBe('https://blinkflow.example');
+    expect(embeddedOrigin('https://blinkflow.example', '   ')).toBe('https://blinkflow.example');
   });
 
   it('tolerates a trailing slash in the declaration', () => {
@@ -151,20 +151,20 @@ describe('embeddedOrigin', () => {
 describe('embeddedUrl', () => {
   it('puts the payload in the path, where a server can answer for it', () => {
     expect(embeddedUrl('http://localhost:8080', '/', 'c1.abc')).toBe('http://localhost:8080/c1.abc');
-    expect(embeddedUrl('https://example.com', '/lightgram/', 'c1.abc')).toBe(
-      'https://example.com/lightgram/c1.abc',
+    expect(embeddedUrl('https://example.com', '/blinkflow/', 'c1.abc')).toBe(
+      'https://example.com/blinkflow/c1.abc',
     );
   });
 
   it('round-trips under a subpath, where both sides agree on the last segment', () => {
-    const url = embeddedUrl('https://example.com', '/lightgram/', 'c1.abc');
-    expect(url).toBe('https://example.com/lightgram/c1.abc');
+    const url = embeddedUrl('https://example.com', '/blinkflow/', 'c1.abc');
+    expect(url).toBe('https://example.com/blinkflow/c1.abc');
     const parsed = new URL(url);
     expect(readShareInput({ hash: parsed.hash, pathname: parsed.pathname })).toBe('c1.abc');
   });
 
   it('normalises a path without a trailing slash', () => {
-    expect(embeddedUrl('http://x.dev', '/lightgram', 'c1.abc')).toBe('http://x.dev/lightgram/c1.abc');
+    expect(embeddedUrl('http://x.dev', '/blinkflow', 'c1.abc')).toBe('http://x.dev/blinkflow/c1.abc');
   });
 
   it('round-trips through readShareInput, so an embedded link opens the same document', () => {
@@ -187,8 +187,8 @@ describe('embeddedUrl', () => {
 describe('shareUrl', () => {
   it('puts the payload in the fragment and keeps the path', () => {
     expect(shareUrl('http://localhost:5174', '/', 'c1.abc')).toBe('http://localhost:5174/#c1.abc');
-    expect(shareUrl('https://example.com', '/lightgram/', 'c1.abc')).toBe(
-      'https://example.com/lightgram/#c1.abc',
+    expect(shareUrl('https://example.com', '/blinkflow/', 'c1.abc')).toBe(
+      'https://example.com/blinkflow/#c1.abc',
     );
   });
 

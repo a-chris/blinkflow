@@ -1,4 +1,4 @@
-// Package flow reads just enough of a lightgram document to describe it in a
+// Package flow reads just enough of a blinkflow document to describe it in a
 // link preview: how big it is, what it is about, and what its first gate is.
 //
 // It is a deliberate mirror of the counting rules in the TypeScript parser

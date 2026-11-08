@@ -25,18 +25,18 @@ function el(tag: string, className: string): HTMLElement {
 }
 
 export function renderFlow(result: ParseResult, options: RenderOptions): HTMLElement {
-  const flow = el('div', 'lg-flow');
+  const flow = el('div', 'bf-flow');
 
   if (result.notes.length > 0) flow.appendChild(renderDocumentNotes(result.notes));
 
   if (result.roots.length === 0) {
-    const empty = el('div', 'lg-empty');
+    const empty = el('div', 'bf-empty');
     empty.textContent = 'Nothing to draw yet — start with a line like `- GET /expenses`.';
     flow.appendChild(empty);
     return flow;
   }
 
-  const list = el('div', 'lg-content lg-roots');
+  const list = el('div', 'bf-content bf-roots');
   result.roots.forEach((node, index) => {
     list.appendChild(renderNode(node, options, index === result.roots.length - 1));
   });
@@ -45,29 +45,29 @@ export function renderFlow(result: ParseResult, options: RenderOptions): HTMLEle
 }
 
 function renderNode(node: LNode, options: RenderOptions, isLast: boolean): HTMLElement {
-  const wrapper = el('div', 'lg-node');
+  const wrapper = el('div', 'bf-node');
   wrapper.dataset.kind = node.kind;
   wrapper.dataset.line = String(node.line);
   if (node.reserved) wrapper.dataset.reserved = node.reserved;
-  if (isLast) wrapper.classList.add('lg-is-last');
+  if (isLast) wrapper.classList.add('bf-is-last');
 
-  const marker = el('div', 'lg-marker');
+  const marker = el('div', 'bf-marker');
   marker.setAttribute('aria-hidden', 'true');
-  const glyph = el('span', 'lg-glyph');
+  const glyph = el('span', 'bf-glyph');
   glyph.textContent = GLYPHS[node.kind] ?? '·';
   marker.appendChild(glyph);
 
-  const main = el('div', 'lg-main');
-  const row = el('div', 'lg-row');
+  const main = el('div', 'bf-main');
+  const row = el('div', 'bf-row');
 
   if ((node.kind === 'arm' || node.kind === 'gate') && node.label) {
-    const label = el('span', 'lg-arm-label');
+    const label = el('span', 'bf-arm-label');
     label.textContent = `${node.label}:`;
     row.appendChild(label);
   }
 
   if (node.text !== '') {
-    const text = el('span', 'lg-text');
+    const text = el('span', 'bf-text');
     text.textContent = node.text;
     row.appendChild(text);
   }
@@ -80,7 +80,7 @@ function renderNode(node: LNode, options: RenderOptions, isLast: boolean): HTMLE
 
   const items = contentOf(node);
   if (items.length > 0) {
-    const content = el('div', 'lg-content');
+    const content = el('div', 'bf-content');
     const lastChild = node.children[node.children.length - 1];
     for (const item of items) {
       content.appendChild(
@@ -97,40 +97,40 @@ function renderNode(node: LNode, options: RenderOptions, isLast: boolean): HTMLE
 }
 
 function peekSpan(panel: Panel): HTMLElement {
-  const peek = el('span', 'lg-peek');
+  const peek = el('span', 'bf-peek');
   peek.textContent = panel.peek || 'details';
   return peek;
 }
 
 function renderPanel(panel: Panel, options: RenderOptions, node: LNode): HTMLElement {
-  const box = el('div', 'lg-panel');
-  const head = el('div', 'lg-panel-head');
+  const box = el('div', 'bf-panel');
+  const head = el('div', 'bf-panel-head');
 
   if (panel.body.length === 0) {
     // A peek with no body has nothing to open: render it as an annotation.
-    box.classList.add('lg-panel-static');
+    box.classList.add('bf-panel-static');
     head.appendChild(peekSpan(panel));
     box.appendChild(head);
   } else {
     const toggle = document.createElement('button');
     toggle.type = 'button';
-    toggle.className = 'lg-panel-toggle';
+    toggle.className = 'bf-panel-toggle';
     toggle.setAttribute('aria-expanded', 'false');
     toggle.dataset.line = String(panel.line);
 
     // The badge shows the language's own operator: `>` in the source is `>`
     // in the render, rotated a quarter turn once the body is open.
-    const glyph = el('span', 'lg-panel-glyph');
+    const glyph = el('span', 'bf-panel-glyph');
     glyph.textContent = '>';
     glyph.setAttribute('aria-hidden', 'true');
 
-    const count = el('span', 'lg-panel-count');
+    const count = el('span', 'bf-panel-count');
     count.textContent = String(panel.body.length);
     count.title = `${panel.body.length} line${panel.body.length === 1 ? '' : 's'} inside`;
 
     toggle.append(glyph, peekSpan(panel), count);
 
-    const body = el('div', 'lg-panel-body');
+    const body = el('div', 'bf-panel-body');
     body.hidden = true;
 
     // Text runs render as one block each; a nested panel splits the run, so the
@@ -139,7 +139,7 @@ function renderPanel(panel: Panel, options: RenderOptions, node: LNode): HTMLEle
     const flush = (): void => {
       if (run.length === 0) return;
       const pre = document.createElement('pre');
-      pre.className = 'lg-pre';
+      pre.className = 'bf-pre';
       pre.textContent = run.join('\n');
       body.appendChild(pre);
       run = [];
@@ -177,7 +177,7 @@ function renderPanel(panel: Panel, options: RenderOptions, node: LNode): HTMLEle
 function renderAnchor(anchor: Anchor, options: RenderOptions, node?: LNode): HTMLElement {
   const url = buildOpenUrl(options.editor, options.baseDir, anchor);
   const link = document.createElement('a');
-  link.className = 'lg-anchor';
+  link.className = 'bf-anchor';
   link.href = url;
   link.dataset.path = anchor.path;
   if (anchor.line) link.dataset.line = String(anchor.line);
@@ -202,7 +202,7 @@ function noteGlyph(): SVGSVGElement {
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', '0 0 16 16');
   svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('class', 'lg-note-icon');
+  svg.setAttribute('class', 'bf-note-icon');
 
   const outline = document.createElementNS(ns, 'path');
   outline.setAttribute('d', 'M3.4 2.4h9.2a1 1 0 0 1 1 1v6.5l-3.7 3.7H3.4a1 1 0 0 1-1-1V3.4a1 1 0 0 1 1-1Z');
@@ -241,7 +241,7 @@ function noteGlyph(): SVGSVGElement {
 function renderNote(note: Note): HTMLElement {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'lg-note';
+  button.className = 'bf-note';
   button.dataset.line = String(note.line);
   button.appendChild(noteGlyph());
   const firstLine = note.text.split('\n')[0];
@@ -262,13 +262,13 @@ function renderNote(note: Note): HTMLElement {
 
 /** `#` lines before any node describe the document itself. */
 function renderDocumentNotes(notes: Note[]): HTMLElement {
-  const list = el('div', 'lg-doc-notes');
+  const list = el('div', 'bf-doc-notes');
 
   for (const note of notes) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'lg-doc-note';
-    const label = el('span', 'lg-doc-note-text');
+    button.className = 'bf-doc-note';
+    const label = el('span', 'bf-doc-note-text');
     label.textContent = note.text;
     button.append(noteGlyph(), label);
     button.title = 'open this note';
@@ -284,7 +284,7 @@ let noteDialog: HTMLDialogElement | null = null;
 
 function notePopupEl(): HTMLElement {
   if (notePopup) return notePopup;
-  const popup = el('div', 'lg-note-pop');
+  const popup = el('div', 'bf-note-pop');
   popup.setAttribute('role', 'tooltip');
   document.body.appendChild(popup);
   notePopup = popup;
@@ -317,22 +317,22 @@ function noteDialogEl(): HTMLDialogElement {
   if (noteDialog) return noteDialog;
 
   const dialog = document.createElement('dialog');
-  dialog.className = 'lg-note-dialog';
+  dialog.className = 'bf-note-dialog';
 
-  const header = el('header', 'lg-note-head');
-  const title = el('span', 'lg-note-title');
-  const glyph = el('span', 'lg-note-glyph');
+  const header = el('header', 'bf-note-head');
+  const title = el('span', 'bf-note-title');
+  const glyph = el('span', 'bf-note-glyph');
   glyph.appendChild(noteGlyph());
   title.append(glyph, document.createTextNode(' note'));
   const close = document.createElement('button');
   close.type = 'button';
-  close.className = 'lg-note-close';
+  close.className = 'bf-note-close';
   close.textContent = 'close';
   close.addEventListener('click', closeNoteDialog);
   header.append(title, close);
 
-  const text = el('p', 'lg-note-text');
-  const meta = el('p', 'lg-note-line');
+  const text = el('p', 'bf-note-text');
+  const meta = el('p', 'bf-note-line');
 
   dialog.append(header, text, meta);
   dialog.addEventListener('click', (event) => {
@@ -346,8 +346,8 @@ function noteDialogEl(): HTMLDialogElement {
 
 export function openNoteDialog(note: Note): void {
   const dialog = noteDialogEl();
-  const text = dialog.querySelector('.lg-note-text');
-  const meta = dialog.querySelector('.lg-note-line');
+  const text = dialog.querySelector('.bf-note-text');
+  const meta = dialog.querySelector('.bf-note-line');
   if (text) text.textContent = note.text;
   if (meta) meta.textContent = `line ${note.line}`;
 
@@ -363,7 +363,7 @@ export function closeNoteDialog(): void {
 
 /** Open or close every panel in a rendered flow. */
 export function setAllPanels(root: HTMLElement, open: boolean): void {
-  const toggles = root.querySelectorAll<HTMLButtonElement>('.lg-panel-toggle');
+  const toggles = root.querySelectorAll<HTMLButtonElement>('.bf-panel-toggle');
   toggles.forEach((toggle) => {
     const isOpen = toggle.getAttribute('aria-expanded') === 'true';
     if (isOpen !== open) toggle.click();

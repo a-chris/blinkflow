@@ -1,5 +1,5 @@
 /**
- * lightgram parser
+ * blinkflow parser
  *
  * The whole language: indentation is the tree, a handful of line-leading
  * markers give a line its kind, `>` opens a collapsible detail panel, and a

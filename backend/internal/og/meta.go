@@ -3,7 +3,7 @@
 // The rules are deliberately boring and content-derived, because a card is only
 // worth having if it tells you what the document is:
 //
-//	title       first document note, else the first step, else "lightgram"
+//	title       first document note, else the first step, else "blinkflow"
 //	description "<n> steps · <n> arms · <n> panels · <n> notes" [+ the first gate]
 package og
 
@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"strings"
 
-	"lightgram/backend/internal/flow"
+	"blinkflow/backend/internal/flow"
 )
 
 // Meta is what goes into the head of a per-document page.
@@ -33,7 +33,7 @@ func FromAnalysis(analysis flow.Analysis) Meta {
 		title = firstLine(analysis.FirstStep)
 	}
 	if title == "" {
-		title = "lightgram"
+		title = "Blinkflow"
 	}
 
 	return Meta{

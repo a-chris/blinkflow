@@ -11,8 +11,8 @@ const MONO = 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace';
  * A tiny stream tokenizer. Deliberately shallow: markers, reserved arms,
  * free-form arms and anchors. That is the entire language.
  */
-export const lightgramLanguage = StreamLanguage.define({
-  name: 'lightgram',
+export const blinkflowLanguage = StreamLanguage.define({
+  name: 'blinkflow',
   token(stream) {
     if (stream.eatSpace()) return null;
     if (stream.match(/^(?:->|[-!~<>])(?=\s|$)/)) return 'punctuation';
@@ -91,7 +91,7 @@ export function createEditor(options: EditorOptions): EditorView {
         indentUnit.of('  '),
         EditorState.tabSize.of(2),
         basicSetup,
-        lightgramLanguage,
+        blinkflowLanguage,
         syntaxHighlighting(highlight),
         theme,
         EditorView.lineWrapping,

@@ -4,27 +4,27 @@ export default defineConfig(({ mode }) => {
   // Both knobs are local business: a dev hostname or a tunnel origin belongs to
   // whoever runs the machine, not to the repository. They come from
   // frontend/.env.local (gitignored) or from the shell.
-  const env = loadEnv(mode, process.cwd(), 'LIGHTGRAM_');
+  const env = loadEnv(mode, process.cwd(), 'BLINKFLOW_');
 
   // In development the editor (:5174) and the card server (:8080) are different
   // origins, and only the server can answer a link with document metadata. The
   // page therefore has to *declare* where that server lives, or an embedded link
   // copied from here would point at Vite and never unfurl.
-  const serverPort = Number(env.LIGHTGRAM_SERVER_PORT ?? 8080);
-  const serverOrigin = env.LIGHTGRAM_SERVER_ORIGIN ?? `http://localhost:${serverPort}`;
-  const extraHosts = (env.LIGHTGRAM_ALLOWED_HOSTS ?? '')
+  const serverPort = Number(env.BLINKFLOW_SERVER_PORT ?? 8080);
+  const serverOrigin = env.BLINKFLOW_SERVER_ORIGIN ?? `http://localhost:${serverPort}`;
+  const extraHosts = (env.BLINKFLOW_ALLOWED_HOSTS ?? '')
     .split(',')
     .map((host) => host.trim())
     .filter((host) => host !== '');
 
   function declareServerOrigin(): Plugin {
     return {
-      name: 'lightgram:server-origin',
+      name: 'blinkflow:server-origin',
       apply: 'serve',
       transformIndexHtml: () => [
         {
           tag: 'meta',
-          attrs: { name: 'lightgram-embedded-origin', content: serverOrigin },
+          attrs: { name: 'blinkflow-embedded-origin', content: serverOrigin },
           injectTo: 'head',
         },
       ],

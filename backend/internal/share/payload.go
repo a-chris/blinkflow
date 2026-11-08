@@ -1,4 +1,4 @@
-// Package share decodes the payload lightgram puts in a URL.
+// Package share decodes the payload blinkflow puts in a URL.
 //
 // A payload is a version prefix and base64url bytes:
 //
@@ -31,14 +31,14 @@ const (
 // not: the letter says how the bytes are packed (c = compressed, p = plain) and
 // the number is the version. Restricting the family is what keeps a stray
 // `/a1.png` from being routed as a share link, while `c2.…` still gets a real
-// "this link needs a newer lightgram".
+// "this link needs a newer blinkflow".
 var payloadShape = regexp.MustCompile(`^[cp][0-9]+\.[A-Za-z0-9_-]+$`)
 
 var (
 	// ErrNotPayload means the string is not a share payload at all.
-	ErrNotPayload = errors.New("not a lightgram share link")
+	ErrNotPayload = errors.New("not a blinkflow share link")
 	// ErrUnsupportedVersion means the shape is right but this build is too old.
-	ErrUnsupportedVersion = errors.New("this link needs a newer lightgram")
+	ErrUnsupportedVersion = errors.New("this link needs a newer blinkflow")
 	// ErrDamaged means the bytes did not survive base64 or inflate.
 	ErrDamaged = errors.New("this share link is damaged or from another version")
 	// ErrTooLarge means the decoded document exceeds the configured cap.

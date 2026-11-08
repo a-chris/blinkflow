@@ -22,20 +22,20 @@ $(FRONTEND)/node_modules: $(FRONTEND)/package-lock.json $(FRONTEND)/package.json
 	cd $(FRONTEND) && npm ci
 
 dev: $(FRONTEND)/node_modules ## run the editor and the card server together on :8080
-	@echo "lightgram dev → http://localhost:$(PORT)  (editor, share links, preview cards)"
-	@cd $(BACKEND) && go build -o bin/lightgram ./cmd/lightgram
-	@( cd $(BACKEND) && exec ./bin/lightgram -port $(PORT) -dev -proxy http://localhost:$(VITE_PORT) ) & \
+	@echo "blinkflow dev → http://localhost:$(PORT)  (editor, share links, preview cards)"
+	@cd $(BACKEND) && go build -o bin/blinkflow ./cmd/blinkflow
+	@( cd $(BACKEND) && exec ./bin/blinkflow -port $(PORT) -dev -proxy http://localhost:$(VITE_PORT) ) & \
 	backend=$$!; \
-	( cd $(FRONTEND) && LIGHTGRAM_SERVER_PORT=$(PORT) exec ./node_modules/.bin/vite --port $(VITE_PORT) --strictPort ) & \
+	( cd $(FRONTEND) && BLINKFLOW_SERVER_PORT=$(PORT) exec ./node_modules/.bin/vite --port $(VITE_PORT) --strictPort ) & \
 	frontend=$$!; \
 	trap 'kill $$backend $$frontend 2>/dev/null; wait 2>/dev/null' INT TERM EXIT; \
 	wait
 
 backend: ## the card server alone, proxying to an already running vite
-	cd $(BACKEND) && go run ./cmd/lightgram -port $(PORT) -dev -proxy http://localhost:$(VITE_PORT)
+	cd $(BACKEND) && go run ./cmd/blinkflow -port $(PORT) -dev -proxy http://localhost:$(VITE_PORT)
 
 frontend: $(FRONTEND)/node_modules ## the playground alone (no preview cards)
-	cd $(FRONTEND) && LIGHTGRAM_SERVER_PORT=$(PORT) ./node_modules/.bin/vite --port $(VITE_PORT) --strictPort
+	cd $(FRONTEND) && BLINKFLOW_SERVER_PORT=$(PORT) ./node_modules/.bin/vite --port $(VITE_PORT) --strictPort
 
 test: test-frontend test-backend ## every test, both languages, plus the typecheck
 
@@ -47,7 +47,7 @@ test-backend:
 
 build: ## typecheck the frontend, then build both halves
 	cd $(FRONTEND) && npm run build
-	cd $(BACKEND) && go build -o bin/lightgram ./cmd/lightgram
+	cd $(BACKEND) && go build -o bin/blinkflow ./cmd/blinkflow
 
 fmt: ## gofmt the server
 	cd $(BACKEND) && gofmt -w .

@@ -17,10 +17,10 @@ import {
 import { openShareDialog, type ShareMode } from './lang/share-dialog';
 
 const STORAGE = {
-  doc: 'lightgram.doc',
-  sample: 'lightgram.sample',
-  editor: 'lightgram.editor',
-  baseDir: 'lightgram.baseDir',
+  doc: 'blinkflow.doc',
+  sample: 'blinkflow.sample',
+  editor: 'blinkflow.editor',
+  baseDir: 'blinkflow.baseDir',
 };
 
 const DEFAULTS = {
@@ -112,7 +112,7 @@ baseInput.placeholder = '/absolute/path/to/your/repo';
  * document are not always the same origin.
  */
 const declaredOrigin =
-  document.querySelector<HTMLMetaElement>('meta[name="lightgram-embedded-origin"]')?.content ?? null;
+  document.querySelector<HTMLMetaElement>('meta[name="blinkflow-embedded-origin"]')?.content ?? null;
 const embedOrigin = embeddedOrigin(window.location.origin, declaredOrigin);
 
 /** Is anything actually listening on the embedded origin? */
@@ -150,7 +150,7 @@ const view = createEditor({
 
 // Dev-only handle: makes the playground debuggable from the console.
 if (import.meta.env.DEV) {
-  (window as unknown as { lightgram?: unknown }).lightgram = { view };
+  (window as unknown as { blinkflow?: unknown }).blinkflow = { view };
 }
 
 function schedule(): void {
@@ -225,10 +225,10 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
 let toastTimer: number | undefined;
 function toast(message: string, milliseconds = 2200): void {
-  let node = document.querySelector<HTMLDivElement>('.lg-toast');
+  let node = document.querySelector<HTMLDivElement>('.bf-toast');
   if (!node) {
     node = document.createElement('div');
-    node.className = 'lg-toast';
+    node.className = 'bf-toast';
     document.body.appendChild(node);
   }
   node.textContent = message;

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"lightgram/backend/internal/share"
+	"blinkflow/backend/internal/share"
 )
 
 // encode mirrors the browser's encodeShare so the tests exercise the same bytes

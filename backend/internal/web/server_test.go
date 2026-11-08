@@ -13,15 +13,15 @@ import (
 	"strings"
 	"testing"
 
-	"lightgram/backend/internal/share"
-	"lightgram/backend/internal/web"
+	"blinkflow/backend/internal/share"
+	"blinkflow/backend/internal/web"
 )
 
 const shell = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>lightgram — light diagrams</title>
+    <title>Blinkflow — understand flows with the blink of an eye</title>
     <meta name="description" content="the generic description" />
   </head>
   <body>
@@ -109,11 +109,11 @@ func TestPayloadPageCarriesTheDocumentCard(t *testing.T) {
 	for _, want := range []string{
 		`<meta property="og:title" content="v3/expenses — API flow" />`,
 		`<meta property="og:description" content="2 steps · 0 arms · 1 panel · 1 note · gate: permission expenses.read" />`,
-		`<meta property="og:site_name" content="lightgram" />`,
+		`<meta property="og:site_name" content="Blinkflow" />`,
 		`<meta name="twitter:card" content="summary" />`,
 		`<link rel="canonical" href="http://example.com/` + payload + `" />`,
-		`<meta name="lightgram-embedded-origin" content="http://example.com" />`,
-		`<title>v3/expenses — API flow — lightgram</title>`,
+		`<meta name="blinkflow-embedded-origin" content="http://example.com" />`,
+		`<title>v3/expenses — API flow — Blinkflow</title>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s\n---\n%s", want, body)
@@ -155,7 +155,7 @@ func TestPageOrigin(t *testing.T) {
 		r.Header.Set("X-Forwarded-Proto", "https")
 	}
 	metaFor := func(origin string) string {
-		return `<meta name="lightgram-embedded-origin" content="` + origin + `" />`
+		return `<meta name="blinkflow-embedded-origin" content="` + origin + `" />`
 	}
 
 	t.Run("uses the request host by default", func(t *testing.T) {
@@ -193,21 +193,21 @@ func TestPageOrigin(t *testing.T) {
 	})
 
 	t.Run("the configured public origin wins over everything", func(t *testing.T) {
-		body := page(t, web.Config{Dev: true, PublicOrigin: "https://lightgram.example.com/"}, forge)
-		if !strings.Contains(body, metaFor("https://lightgram.example.com")) {
+		body := page(t, web.Config{Dev: true, PublicOrigin: "https://blinkflow.example.com/"}, forge)
+		if !strings.Contains(body, metaFor("https://blinkflow.example.com")) {
 			t.Fatalf("configured origin not used\n---\n%s", body)
 		}
 		if strings.Contains(body, "evil.example") {
 			t.Fatalf("forwarded header overrode the configured origin\n---\n%s", body)
 		}
-		if !strings.Contains(body, `<link rel="canonical" href="https://lightgram.example.com/`+payload+`" />`) {
+		if !strings.Contains(body, `<link rel="canonical" href="https://blinkflow.example.com/`+payload+`" />`) {
 			t.Fatalf("canonical did not use the configured origin\n---\n%s", body)
 		}
 	})
 }
 
 func TestPublicOriginIsValidated(t *testing.T) {
-	bad := []string{"lightgram.example.com", "ftp://lightgram.example.com", "https://lightgram.example.com/app", "https://user:pw@lightgram.example.com"}
+	bad := []string{"blinkflow.example.com", "ftp://blinkflow.example.com", "https://blinkflow.example.com/app", "https://user:pw@blinkflow.example.com"}
 	for _, value := range bad {
 		if _, err := web.New(web.Config{Dev: true, Proxy: &url.URL{Host: "localhost:5174"}, ShellPath: shellFile(t), PublicOrigin: value}); err == nil {
 			t.Errorf("expected %q to be rejected", value)
@@ -249,7 +249,7 @@ func TestUnknownVersionFailsLoudly(t *testing.T) {
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status %d", response.Code)
 	}
-	if !strings.Contains(response.Body.String(), "needs a newer lightgram") {
+	if !strings.Contains(response.Body.String(), "needs a newer blinkflow") {
 		t.Fatalf("unhelpful body: %s", response.Body.String())
 	}
 }

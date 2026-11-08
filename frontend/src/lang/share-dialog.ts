@@ -35,32 +35,32 @@ function element<K extends keyof HTMLElementTagNameMap>(
 
 function build(): HTMLDialogElement {
   const node = document.createElement('dialog');
-  node.className = 'lg-share-dialog';
-  node.setAttribute('aria-labelledby', 'lg-share-title');
+  node.className = 'bf-share-dialog';
+  node.setAttribute('aria-labelledby', 'bf-share-title');
 
-  const head = element('header', 'lg-share-head');
-  const title = element('span', 'lg-share-title');
-  title.id = 'lg-share-title';
+  const head = element('header', 'bf-share-head');
+  const title = element('span', 'bf-share-title');
+  title.id = 'bf-share-title';
   title.textContent = 'share this document';
 
   const close = document.createElement('button');
   close.type = 'button';
-  close.className = 'lg-share-close';
+  close.className = 'bf-share-close';
   close.textContent = 'close';
   close.addEventListener('click', () => closeShareDialog());
   head.append(title, close);
 
-  const options = element('div', 'lg-share-options');
+  const options = element('div', 'bf-share-options');
 
   for (const choice of CHOICES) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'lg-share-option';
+    button.className = 'bf-share-option';
     button.dataset.mode = choice.mode;
 
-    const name = element('span', 'lg-share-name');
+    const name = element('span', 'bf-share-name');
     name.textContent = choice.name;
-    const hint = element('span', 'lg-share-hint');
+    const hint = element('span', 'bf-share-hint');
     hint.textContent = choice.hint;
 
     if (choice.mode === 'embedded') {

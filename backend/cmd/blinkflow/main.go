@@ -1,4 +1,4 @@
-// Command lightgram serves previewable lightgram links.
+// Command blinkflow serves previewable blinkflow links.
 //
 // The document lives in the URL, so there is nothing to store: a request is
 // decoded, described in three meta tags, and answered with the app shell. The
@@ -25,8 +25,8 @@ import (
 	"syscall"
 	"time"
 
-	"lightgram/backend/internal/share"
-	"lightgram/backend/internal/web"
+	"blinkflow/backend/internal/share"
+	"blinkflow/backend/internal/web"
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 		shell      = flag.String("shell", "../frontend/index.html", "app shell served in dev")
 		static     = flag.String("static", "../frontend/dist", "built site served outside dev")
 		maxPayload = flag.Int("max-payload", 64<<10, "largest decoded document, in bytes")
-		publicURL  = flag.String("public-origin", "", "origin every generated URL claims, e.g. https://lightgram.example.com")
+		publicURL  = flag.String("public-origin", "", "origin every generated URL claims, e.g. https://blinkflow.example.com")
 		trustProxy = flag.Bool("trust-proxy", false, "believe X-Forwarded-Proto/-Host; only behind a proxy you control")
 	)
 	flag.Parse()
@@ -50,7 +50,7 @@ func main() {
 		MaxPayloadBytes: *maxPayload,
 		PublicOrigin:    *publicURL,
 		TrustProxy:      *trustProxy,
-		Log:             log.New(os.Stderr, "lightgram ", log.LstdFlags|log.Lmsgprefix),
+		Log:             log.New(os.Stderr, "blinkflow ", log.LstdFlags|log.Lmsgprefix),
 	}
 
 	if *dev {

@@ -1,10 +1,11 @@
 {
-  "name": "lightgram",
+  "name": "blinkflow",
   "private": true,
+  "homepage": "https://blinkflow.live",
   "version": "0.1.0",
   "license": "Elastic-2.0",
   "type": "module",
-  "description": "Light diagrams — a tiny text notation for flows, with collapsible detail and click-through source anchors.",
+  "description": "Understand flows with the blink of an eye — a tiny text notation for flows, with collapsible detail and click-through source anchors.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

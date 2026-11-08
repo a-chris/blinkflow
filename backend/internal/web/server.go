@@ -1,4 +1,4 @@
-// Package web is the only server lightgram has: it answers a previewable link
+// Package web is the only server blinkflow has: it answers a previewable link
 // with a page whose head describes that document, so crawlers that never run
 // JavaScript still see a real title.
 //
@@ -21,9 +21,9 @@ import (
 	"regexp"
 	"strings"
 
-	"lightgram/backend/internal/flow"
-	"lightgram/backend/internal/og"
-	"lightgram/backend/internal/share"
+	"blinkflow/backend/internal/flow"
+	"blinkflow/backend/internal/og"
+	"blinkflow/backend/internal/share"
 )
 
 // Config describes how the server is wired.
@@ -39,7 +39,7 @@ type Config struct {
 	// MaxPayloadBytes caps the decoded document.
 	MaxPayloadBytes int
 	// PublicOrigin, when set, is the origin every generated URL claims, e.g.
-	// https://lightgram.example.com. It is the deployed truth: with it, nothing
+	// https://blinkflow.example.com. It is the deployed truth: with it, nothing
 	// in the request can influence a canonical URL or an embedded link.
 	PublicOrigin string
 	// TrustProxy makes the server believe X-Forwarded-Proto/-Host. Only safe
@@ -50,7 +50,7 @@ type Config struct {
 	Log *log.Logger
 }
 
-// Server implements http.Handler for lightgram.
+// Server implements http.Handler for blinkflow.
 type Server struct {
 	config   Config
 	proxy    *httputil.ReverseProxy
@@ -120,7 +120,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// This applies to every route, health included.
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, "lightgram share links are read-only", http.StatusMethodNotAllowed)
+		http.Error(w, "Blinkflow share links are read-only", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -206,17 +206,17 @@ func (s *Server) render(r *http.Request, meta og.Meta) (string, error) {
 	origin := s.originOf(r)
 	link := origin + r.URL.EscapedPath()
 	head := strings.Join([]string{
-		fmt.Sprintf(`<title>%s — lightgram</title>`, escape(meta.Title)),
+		fmt.Sprintf(`<title>%s — Blinkflow</title>`, escape(meta.Title)),
 		fmt.Sprintf(`<meta name="description" content="%s" />`, escape(meta.Description)),
 		`<meta property="og:type" content="article" />`,
-		`<meta property="og:site_name" content="lightgram" />`,
+		`<meta property="og:site_name" content="Blinkflow" />`,
 		fmt.Sprintf(`<meta property="og:title" content="%s" />`, escape(meta.Title)),
 		fmt.Sprintf(`<meta property="og:description" content="%s" />`, escape(meta.Description)),
 		fmt.Sprintf(`<meta property="og:url" content="%s" />`, escape(link)),
 		`<meta name="twitter:card" content="summary" />`,
 		// Pages served from here are the authority on embedded links: this is the
 		// origin a document URL has to live on, whatever host the editor is using.
-		fmt.Sprintf(`<meta name="lightgram-embedded-origin" content="%s" />`, escape(origin)),
+		fmt.Sprintf(`<meta name="blinkflow-embedded-origin" content="%s" />`, escape(origin)),
 		fmt.Sprintf(`<link rel="canonical" href="%s" />`, escape(link)),
 		"",
 	}, "\n")
@@ -251,12 +251,12 @@ func (s *Server) serveMessage(w http.ResponseWriter, r *http.Request, status int
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>%s — lightgram</title>
+    <title>%s — Blinkflow</title>
     <meta name="robots" content="noindex" />
   </head>
   <body style="font:16px/1.5 ui-sans-serif,system-ui;margin:3rem auto;max-width:34rem;padding:0 1.5rem">
     <h1 style="font-size:1.25rem">%s</h1>
-    <p><a href="/">open lightgram</a></p>
+    <p><a href="/">open Blinkflow</a></p>
   </body>
 </html>
 `, escape(message), escape(message))

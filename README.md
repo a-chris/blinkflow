@@ -1,7 +1,20 @@
-# lightgram
+# Blinkflow
+
+**Understand flows with the blink of an eye.** → [blinkflow.live](https://blinkflow.live)
 
 A tiny text notation for flows — with collapsible detail panels and click-through
 source anchors. Written as plain text, rendered as a tree.
+
+You have been here. You ask an AI how something works, and it starts at the
+implementation details. You stop it, ask for the high level, and eventually you
+understand the shape — but not the parts that actually matter: who is allowed to
+see this data, what happens when it fails, which service is called here. Fifteen
+questions later your head is full and you are scrolling back through the thread
+to piece the answer together.
+
+Blinkflow exists so that does not happen. It gives an AI a standard way to explain
+a flow, and gives you the flow itself — start at the concept, open the details
+only where you care about them.
 
 ```bash
 make install    # once, on a fresh clone: frontend deps from the lockfile
@@ -43,7 +56,7 @@ GET v3/expenses
 
 | pane | |
 |---|---|
-| left | CodeMirror editor with lightgram highlighting |
+| left | CodeMirror editor with Blinkflow highlighting |
 | right | live diagram — click the `>` badge for detail, `↗` to jump to source |
 
 Toolbar: **sample** (three worked examples), **open in** (VS Code, Cursor, Zed,
@@ -79,7 +92,7 @@ document. The browser then decodes the same payload again and draws it.
 
 ```
 curl -A "Slackbot" http://localhost:8080/c1.…
-  <title>POST v3/checkout — call stack — lightgram</title>
+  <title>POST v3/checkout — call stack — Blinkflow</title>
   <meta property="og:title" content="POST v3/checkout — call stack" />
   <meta property="og:description" content="15 steps · 2 arms · 5 panels · 3 notes" />
 ```
@@ -99,7 +112,7 @@ built site:
 | `-addr` | `127.0.0.1` | loopback; set deliberately when it faces a network |
 | `-port` | `8080` | |
 | `-static` | `../frontend/dist` | the built site, served with an SPA fallback |
-| `-public-origin` | — | `https://lightgram.example.com`; the origin every generated URL claims |
+| `-public-origin` | — | `https://blinkflow.example.com`; the origin every generated URL claims |
 | `-trust-proxy` | off | believe `X-Forwarded-Proto`/`-Host` — only behind a proxy you control |
 | `-max-payload` | `64 KiB` | largest decoded document |
 
@@ -116,9 +129,9 @@ A tunnel hostname or a public origin is nobody else's business, so it lives in
 
 | variable | |
 |---|---|
-| `LIGHTGRAM_ALLOWED_HOSTS` | extra dev-server hostnames, comma separated |
-| `LIGHTGRAM_SERVER_ORIGIN` | where embedded links should point |
-| `LIGHTGRAM_SERVER_PORT` | the card server's port, when it is not 8080 |
+| `BLINKFLOW_ALLOWED_HOSTS` | extra dev-server hostnames, comma separated |
+| `BLINKFLOW_SERVER_ORIGIN` | where embedded links should point |
+| `BLINKFLOW_SERVER_PORT` | the card server's port, when it is not 8080 |
 
 ## Structure
 
@@ -152,3 +165,10 @@ The counting rules exist twice: once in the TypeScript parser, once in Go.
 `.json` values are asserted by `frontend/src/lang/preview.test.ts` and
 `backend/internal/flow`, so the two cannot drift without a test failing. The
 expected values were generated from the parser (the reference) and then fixed.
+
+## Licence
+
+[Elastic License 2.0](./LICENSE). Use it, self-host it, modify it, build on it —
+hosting it for third parties as a managed service is the one thing reserved for
+the project. The Blinkflow name and marks are not covered by the licence, and
+this is not an OSI open-source licence.
