@@ -14,6 +14,16 @@
 const COMPRESSED = 'c1.';
 const PLAIN = 'p1.';
 
+/**
+ * A versioned payload, whether or not this build understands it. Matching the
+ * shape (not just `c1.`) is what lets an old client say "this link needs a newer
+ * lightgram" instead of showing an empty editor.
+ */
+const VERSIONED = /^[cp][0-9]+\.[A-Za-z0-9_-]+$/;
+
+/** The first prefix this build can actually decode. */
+const SUPPORTED = /^[cp]1\./;
+
 export class ShareError extends Error {
   constructor(message: string) {
     super(message);
@@ -111,7 +121,11 @@ export async function decodeShare(payload: string): Promise<string> {
     }
   }
 
-  throw new ShareError('this does not look like a lightgram share link');
+  throw new ShareError(
+    SUPPORTED.test(value) || !VERSIONED.test(value)
+      ? 'this does not look like a lightgram share link'
+      : 'this link needs a newer lightgram',
+  );
 }
 
 /**
@@ -123,16 +137,43 @@ export function readShareInput(location: { hash: string; pathname: string }): st
   const fragment = location.hash.replace(/^#/, '').trim();
   if (fragment !== '') return fragment;
 
-  const segment = location.pathname.replace(/^\/+/, '');
-  if (segment.startsWith(COMPRESSED) || segment.startsWith(PLAIN)) return segment;
+  // The payload is the last segment, not the whole path: the app is allowed to
+  // live under a subpath (`/lightgram/c1.…`), and the server routes by the same
+  // rule. Reading only the first segment made the two disagree.
+  const segment = location.pathname.replace(/\/+$/, '').split('/').pop() ?? '';
+  if (VERSIONED.test(segment)) return segment;
 
   return null;
 }
 
-/** Build the canonical share URL for a payload. */
+/** Build the canonical share URL for a payload: private, stays in the browser. */
 export function shareUrl(origin: string, pathname: string, payload: string): string {
   const path = pathname === '' ? '/' : pathname;
   return `${origin}${path}#${payload}`;
+}
+
+/**
+ * The origin an embedded link must point at.
+ *
+ * A simple link opens in whatever app the reader already has, so it belongs on
+ * the origin the editor is served from. An embedded link is only worth anything
+ * if a *server* answers for it, and in development the editor (:5174) and the
+ * server (:8080) are different origins. The page therefore declares the server
+ * in a meta tag; without a declaration the two are the same origin.
+ */
+export function embeddedOrigin(pageOrigin: string, declared: string | null | undefined): string {
+  const value = (declared ?? '').trim().replace(/\/+$/, '');
+  return value === '' ? pageOrigin : value;
+}
+
+/**
+ * Build the embedded URL: the same payload, in the path instead of the fragment,
+ * so the document sits at an address a server can answer for. That is what lets
+ * it unfurl into a card, and what makes it worth pasting into documentation.
+ */
+export function embeddedUrl(origin: string, pathname: string, payload: string): string {
+  const path = pathname.endsWith('/') ? pathname : `${pathname}/`;
+  return `${origin}${path}${payload}`;
 }
 
 /** Human-readable size, used to warn when a link is awkward to paste around. */

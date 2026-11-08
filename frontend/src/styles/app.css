@@ -862,3 +862,79 @@ body.is-dragging {
     cursor: row-resize;
   }
 }
+
+/* ---------- share dialog ---------- */
+
+/* Draws on the note dialog's terms: top layer, own background, mono labels. */
+.lg-share-dialog {
+  width: min(430px, 92vw);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: #10161f;
+  color: var(--text);
+  font-family: var(--mono);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
+}
+
+.lg-share-dialog::backdrop {
+  background: rgba(4, 6, 10, 0.62);
+  backdrop-filter: blur(2px);
+}
+
+.lg-share-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.lg-share-options {
+  display: grid;
+  padding: 6px;
+  gap: 4px;
+}
+
+.lg-share-option {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-family: var(--sans);
+}
+
+.lg-share-option:hover,
+.lg-share-option:focus-visible {
+  background: #16202c;
+  border-color: var(--line-strong);
+}
+
+.lg-share-option:focus-visible {
+  outline: none;
+}
+
+.lg-share-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.lg-share-option:hover .lg-share-name {
+  color: var(--accent);
+}
+
+.lg-share-hint {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}

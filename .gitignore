@@ -1,8 +1,12 @@
 node_modules
 dist
+backend/bin
+.vite
 .DS_Store
 *.local
 .env
 .env.*
+!.env.example
 *.pem
 *.key
+plan.md

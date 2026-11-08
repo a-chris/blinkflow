@@ -1,0 +1,15 @@
+GET v3/reports
+  gate: reports.export granted
+    yes:
+      - Report::Export.call(id)
+        - per_page clamped to 1..100
+          > the clamp is applied twice — once here, once in the model
+            - this line looks like a step but it is panel text
+        # first line of a note
+        # second line of the same note
+      which format:
+        - pdf
+    no:
+      - 403 { error: "forbidden" }
+  > a graph is not drawn
+    - also panel text

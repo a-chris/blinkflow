@@ -1,0 +1,9 @@
+{
+  "steps": 9,
+  "arms": 3,
+  "panels": 2,
+  "notes": 1,
+  "firstNote": "",
+  "firstStep": "GET v3/reports",
+  "firstGate": "reports.export granted"
+}

@@ -1,0 +1,31 @@
+# Signup — user flow
+
+@visitor
+Landing page /
+  visitor submits email
+  gate: email already registered
+    yes:
+      - send magic link instead of password
+        > fewer support tickets, no password reset flow to build
+      - 202 { message: "check your inbox" }
+    no:
+      - create User(status: :pending)
+        ~ VerificationMailer.deliver_later
+          > signed token, 24h expiry
+  gate: email verified within 24h
+    yes:
+      - onboarding checklist
+        > 3 steps, skippable except payment method
+      - 302 /dashboard
+    no:
+      - 302 /verify-again
+        > rate limited: 3 resends per hour per address
+  existing customer:
+    - password login
+      gate: 2FA enabled
+        yes:
+          - 302 /2fa
+        no:
+          - 302 /dashboard
+  banned:
+    - 403 { error: "account_suspended" }

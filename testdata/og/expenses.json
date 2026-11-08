@@ -1,0 +1,9 @@
+{
+  "steps": 10,
+  "arms": 2,
+  "panels": 4,
+  "notes": 3,
+  "firstNote": "v3/expenses — API flow",
+  "firstStep": "GET v3/expenses",
+  "firstGate": "permission expenses.read"
+}

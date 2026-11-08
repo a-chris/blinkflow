@@ -1,6 +1,15 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { decodeShare, describeLength, encodeShare, readShareInput, shareUrl, ShareError } from './share';
+import {
+  decodeShare,
+  describeLength,
+  embeddedOrigin,
+  embeddedUrl,
+  encodeShare,
+  readShareInput,
+  shareUrl,
+  ShareError,
+} from './share';
 
 const hasCompression = typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
 
@@ -69,6 +78,10 @@ describe('decoding failures', () => {
     await expect(decodeShare('hello')).rejects.toBeInstanceOf(ShareError);
   });
 
+  it('says a newer build made the link, instead of showing an empty document', async () => {
+    await expect(decodeShare('c2.HVTRx8wQ')).rejects.toThrow('needs a newer lightgram');
+  });
+
   it('rejects damaged base64', async () => {
     await expect(decodeShare('p1.!!!!')).rejects.toBeInstanceOf(ShareError);
   });
@@ -99,6 +112,75 @@ describe('readShareInput', () => {
   it('ignores an ordinary path', () => {
     expect(readShareInput({ hash: '', pathname: '/' })).toBeNull();
     expect(readShareInput({ hash: '', pathname: '/lightgram/' })).toBeNull();
+    expect(readShareInput({ hash: '', pathname: '/assets/index-Cikaj9Ln.js' })).toBeNull();
+    expect(readShareInput({ hash: '', pathname: '/a1.png' })).toBeNull();
+  });
+
+  it('reads the payload from a mounted subpath, matching the server', () => {
+    expect(readShareInput({ hash: '', pathname: '/lightgram/c1.abc' })).toBe('c1.abc');
+    expect(readShareInput({ hash: '', pathname: '/a/b/p1.abc/' })).toBe('p1.abc');
+  });
+
+  it('still ignores a subpath that carries no payload', () => {
+    expect(readShareInput({ hash: '', pathname: '/lightgram/' })).toBeNull();
+    expect(readShareInput({ hash: '', pathname: '/lightgram/index.html' })).toBeNull();
+  });
+
+  it('still reads a version it cannot decode, so the user gets an explanation', () => {
+    expect(readShareInput({ hash: '', pathname: '/c2.abc' })).toBe('c2.abc');
+    expect(readShareInput({ hash: '#c2.abc', pathname: '/' })).toBe('c2.abc');
+  });
+});
+
+describe('embeddedOrigin', () => {
+  it('uses the declared server origin, so a dev editor cannot emit its own port', () => {
+    expect(embeddedOrigin('http://localhost:5174', 'http://localhost:8080')).toBe('http://localhost:8080');
+  });
+
+  it('falls back to the page origin when nothing is declared', () => {
+    expect(embeddedOrigin('https://lightgram.example', null)).toBe('https://lightgram.example');
+    expect(embeddedOrigin('https://lightgram.example', '')).toBe('https://lightgram.example');
+    expect(embeddedOrigin('https://lightgram.example', '   ')).toBe('https://lightgram.example');
+  });
+
+  it('tolerates a trailing slash in the declaration', () => {
+    expect(embeddedOrigin('http://localhost:5174', 'http://localhost:8080/')).toBe('http://localhost:8080');
+  });
+});
+
+describe('embeddedUrl', () => {
+  it('puts the payload in the path, where a server can answer for it', () => {
+    expect(embeddedUrl('http://localhost:8080', '/', 'c1.abc')).toBe('http://localhost:8080/c1.abc');
+    expect(embeddedUrl('https://example.com', '/lightgram/', 'c1.abc')).toBe(
+      'https://example.com/lightgram/c1.abc',
+    );
+  });
+
+  it('round-trips under a subpath, where both sides agree on the last segment', () => {
+    const url = embeddedUrl('https://example.com', '/lightgram/', 'c1.abc');
+    expect(url).toBe('https://example.com/lightgram/c1.abc');
+    const parsed = new URL(url);
+    expect(readShareInput({ hash: parsed.hash, pathname: parsed.pathname })).toBe('c1.abc');
+  });
+
+  it('normalises a path without a trailing slash', () => {
+    expect(embeddedUrl('http://x.dev', '/lightgram', 'c1.abc')).toBe('http://x.dev/lightgram/c1.abc');
+  });
+
+  it('round-trips through readShareInput, so an embedded link opens the same document', () => {
+    const url = embeddedUrl('http://localhost:8080', '/', 'c1.abc');
+    const parsed = new URL(url);
+    expect(readShareInput({ hash: parsed.hash, pathname: parsed.pathname })).toBe('c1.abc');
+  });
+
+  it('differs from the simple link only in where the payload sits', () => {
+    const privateUrl = shareUrl('http://localhost:8080', '/', 'c1.abc');
+    const embedded = embeddedUrl('http://localhost:8080', '/', 'c1.abc');
+
+    expect(privateUrl).toBe('http://localhost:8080/#c1.abc');
+    expect(embedded).toBe('http://localhost:8080/c1.abc');
+    // Same origin and app path: only the carrier differs.
+    expect(privateUrl.replace('#c1.abc', '')).toBe(embedded.replace('c1.abc', ''));
   });
 });
 

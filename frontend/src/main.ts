@@ -4,7 +4,17 @@ import { closeNoteDialog, hideNotePopup, renderFlow, setAllPanels } from './lang
 import { createEditor } from './lang/editor';
 import { DEFAULT_EDITOR, displayRef, EDITORS, type EditorId } from './lang/anchors';
 import { DEFAULT_SAMPLE_ID, SAMPLES } from './samples';
-import { decodeShare, describeLength, encodeShare, readShareInput, shareUrl, ShareError } from './lang/share';
+import {
+  decodeShare,
+  describeLength,
+  embeddedOrigin,
+  embeddedUrl,
+  encodeShare,
+  readShareInput,
+  shareUrl,
+  ShareError,
+} from './lang/share';
+import { openShareDialog, type ShareMode } from './lang/share-dialog';
 
 const STORAGE = {
   doc: 'lightgram.doc',
@@ -58,7 +68,7 @@ const initialSample = SAMPLES.find((s) => s.id === initialSampleId) ?? SAMPLES[0
 
 /** The app path with any share payload stripped, so it can be cleaned off again. */
 function withoutPayload(pathname: string): string {
-  const stripped = pathname.replace(/\/(?:c1|p1)\.[^/]+\/?$/, '/');
+  const stripped = pathname.replace(/\/[cp][0-9]+\.[^/]+\/?$/, '/');
   return stripped === '' ? '/' : stripped;
 }
 
@@ -95,6 +105,29 @@ if (sharedDoc !== null) {
 editorSelect.value = editorId;
 baseInput.value = baseDir;
 baseInput.placeholder = '/absolute/path/to/your/repo';
+
+/**
+ * Where embedded links belong. The page declares it (Vite in development, the Go
+ * server in production), because the editor and the server that can answer for a
+ * document are not always the same origin.
+ */
+const declaredOrigin =
+  document.querySelector<HTMLMetaElement>('meta[name="lightgram-embedded-origin"]')?.content ?? null;
+const embedOrigin = embeddedOrigin(window.location.origin, declaredOrigin);
+
+/** Is anything actually listening on the embedded origin? */
+async function embeddedServerReady(): Promise<boolean> {
+  if (embedOrigin === window.location.origin) return true;
+  try {
+    // A cache-busting parameter, not `cache: 'no-store'`: the latter can add a
+    // request header the browser then has to preflight, and this call is only
+    // ever a plain cross-origin GET.
+    const response = await fetch(`${embedOrigin}/healthz?t=${Date.now()}`);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
 
 let lastResult: ParseResult | null = null;
 let renderTimer: number | undefined;
@@ -245,25 +278,44 @@ baseInput.addEventListener('input', () => {
   render();
 });
 
-shareButton.addEventListener('click', async () => {
+/**
+ * One payload, two carriers. `simple` keeps the document in the fragment, where
+ * it opens for whoever gets the link. `embedded` puts the same payload in the
+ * path, so the address can be answered for — that is what a page or a document
+ * needs in order to show it.
+ */
+async function copyShareLink(mode: ShareMode): Promise<void> {
   shareButton.disabled = true;
   try {
     const payload = await encodeShare(view.state.doc.toString());
-    const url = shareUrl(window.location.origin, withoutPayload(window.location.pathname), payload);
-    window.history.replaceState(null, '', `#${payload}`);
+    const path = withoutPayload(window.location.pathname);
+    const url =
+      mode === 'embedded'
+        ? embeddedUrl(embedOrigin, path, payload)
+        : shareUrl(window.location.origin, path, payload);
+
+    // Write the whole path, not just the fragment: coming from an embedded link,
+    // a bare fragment would leave the old payload stranded in the URL.
+    window.history.replaceState(null, '', mode === 'embedded' ? `${path}${payload}` : `${path}#${payload}`);
     urlTracksDoc = true;
 
     const size = describeLength(url);
     const long = url.length > 6000 ? ' · long link, some chat apps truncate it' : '';
     const copied = await copyToClipboard(url);
-    if (copied) toast(`link copied · ${size}${long}`, long ? 5200 : 3000);
-    else toast(`copy blocked — the address bar holds the link · ${size}${long}`, 5200);
+    const name = mode === 'embedded' ? 'embedded' : 'simple';
+
+    if (copied) toast(`${name} share link copied · ${size}${long}`, long ? 5200 : 3000);
+    else toast(`copy blocked — the address bar holds the ${name} share link · ${size}${long}`, 5200);
   } catch {
     toast('could not build a share link');
   } finally {
     shareButton.disabled = false;
   }
-});
+}
+
+shareButton.addEventListener('click', () =>
+  openShareDialog((mode) => void copyShareLink(mode), embeddedServerReady),
+);
 
 expandButton.addEventListener('click', () => {
   setAllPanels(previewHost, true);
