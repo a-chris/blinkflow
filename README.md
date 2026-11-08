@@ -114,7 +114,15 @@ The server serves those assets itself, so a container is one process on one port
 
 ```bash
 make image-run                       # build, then serve on :8080
-docker run -p 8080:8080 -e BLINKFLOW_PUBLIC_ORIGIN=https://blinkflow.live blinkflow:dev
+docker run -p 8080:8080 -e BLINKFLOW_PUBLIC_ORIGIN=https://blinkflow.live ghcr.io/a-chris/blinkflow:latest
+```
+
+Two tags are published, and the rule is the whole convention: a push to the default branch publishes `latest`, and a pushed tag publishes that tag verbatim.
+Releasing a version therefore never moves `latest` under someone who pulled yesterday.
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0               # ghcr.io/a-chris/blinkflow:v0.2.0
 ```
 
 Every deployment flag also reads an environment variable, because a compose file or an image cannot pass arguments; a flag still wins when it is given.

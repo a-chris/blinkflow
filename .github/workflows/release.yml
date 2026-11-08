@@ -2,9 +2,18 @@
 # ============================================================
 # Blinkflow — Container image
 #
+# Tagging follows the trackete convention:
+#
+#   push to the default branch   → :latest
+#   push a tag like v1.2.3       → :v1.2.3   (the tag, verbatim)
+#
+# `latest` never moves because a version tag was pushed: the two
+# are separate events, and only the default branch may advance
+# `latest`.
+#
 # Two jobs, in this order for a reason:
 #
-#   build    compiles one amd64 image, loads it, and runs it —
+#   verify   compiles one amd64 image, loads it, and runs it —
 #            health, app shell, hashed asset, an embedded share
 #            link, and the read-only rule. An image that pushes
 #            but does not serve is worthless, so this gates the
@@ -14,11 +23,13 @@
 #            Go cross-compiles, so arm64 costs seconds, not an
 #            emulated toolchain.
 # ============================================================
-name: Image
+name: Publish container image
 
 on:
   push:
-    branches: [main]
+    # The default branch may be either name; `latest` follows whichever one
+    # GitHub reports as the default, so this list only has to admit it.
+    branches: [main, master]
     tags: ["v*"]
   pull_request:
     paths:
@@ -27,7 +38,8 @@ on:
       - "LICENSE"
       - "frontend/**"
       - "backend/**"
-      - ".github/workflows/image.yml"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
 
 concurrency:
   group: image-${{ github.ref }}
@@ -37,21 +49,21 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build:
+  verify:
     name: Build and run the image
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # GHCR rejects uppercase, and github.repository is whatever the repo is called.
       - name: Resolve image name
         run: echo "IMAGE=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build the image
         uses: docker/build-push-action@v6
@@ -109,21 +121,21 @@ jobs:
 
   publish:
     name: Publish to GHCR
-    needs: build
-    if: github.event_name == 'push'
+    needs: verify
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Resolve image name
         run: echo "IMAGE=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -132,17 +144,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # flavor.latest=false stops metadata-action from adding `latest` by
+      # itself: it is granted here, explicitly, and only to the default branch.
+      # A tag push therefore publishes that version and leaves `latest` alone.
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          flavor: |
+            latest=false
           tags: |
-            type=sha,format=short
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=ref,event=tag
           labels: |
             org.opencontainers.image.title=Blinkflow
             org.opencontainers.image.description=A tiny text notation for flows, with collapsible detail and previewable share links
