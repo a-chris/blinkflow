@@ -86,7 +86,7 @@ curl -A "Slackbot" http://localhost:8080/c1.…
   <meta property="og:description" content="15 steps · 2 arms · 5 panels · 3 notes" />
 ```
 
-What the server is not: it stores nothing, logs no payload (requests are logged as `c1.<redacted> (769 chars)`), has no endpoints that accept writes, and is never on the path of *reading* a link.
+What the server is not: it stores nothing, logs no document (requests are logged as `c1.<redacted> (769 chars)`), has exactly one endpoint that accepts a body — `POST /share`, which also stores nothing — and is never on the path of *reading* a link.
 Kill it and every link still opens; only the card falls back to a generic title.
 
 ### Running it
@@ -148,6 +148,45 @@ A tunnel hostname or a public origin is nobody else's business, so it lives in `
 | `BLINKFLOW_ALLOWED_HOSTS` | extra dev-server hostnames, comma separated |
 | `BLINKFLOW_SERVER_ORIGIN` | where embedded links should point |
 | `BLINKFLOW_SERVER_PORT` | the card server's port, when it is not 8080 |
+
+## Share API
+
+An agent that has worked out a flow should be able to hand back a link instead of a wall of text.
+`POST /share` takes the document as the body and answers with the links, plus a summary of what it understood.
+Newlines are the structure, so the bytes are taken exactly as sent.
+
+```bash
+curl -sS -X POST https://blinkflow.live/share \
+  -H 'content-type: text/plain' \
+  --data-binary @flow.lg
+```
+
+```json
+{
+  "links": {
+    "embedded": "https://blinkflow.live/c1.…",
+    "simple": "https://blinkflow.live/#c1.…"
+  },
+  "payload": "c1.…",
+  "title": "v3/expenses — API flow",
+  "description": "6 steps · 2 arms · 1 panel · 1 note · gate: permission expenses.read",
+  "steps": 6,
+  "arms": 2,
+  "panels": 1,
+  "notes": 1,
+  "source_bytes": 270,
+  "payload_chars": 262
+}
+```
+
+Both carriers are returned by default; `?mode=embedded` (or `"mode": "…"` in a JSON body) asks for one.
+`"mode"` is the share dialog's own word for the same choice, and the route is named for what a caller wants rather than how a payload is packed — a new carrier, such as an image preview, arrives as another key under `links` rather than another endpoint.
+
+`application/json` with `{"source": "…"}` works too. The summary is not decoration: the payload is opaque to the caller, so the counts are the only way to notice that a document arrived as one flat step.
+
+It is a pure function — the same document produces the same link — and it is capped, `no-store`, and logged by size only.
+The links it builds are the format the editor builds, which is the point: `share.Encode` is a second implementation of the same format, and a test decodes the server's payload with the app's own decoder.
+Only the version prefix is shared between them, so a format change is a new prefix (`c2.…`) that old clients refuse loudly instead of rendering wrong.
 
 ## Structure
 

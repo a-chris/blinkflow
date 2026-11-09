@@ -2,9 +2,9 @@
 // with a page whose head describes that document, so crawlers that never run
 // JavaScript still see a real title.
 //
-// It does not store anything. The document arrives in the URL, is decoded in
-// memory, is summarised, and is thrown away. Nothing is written to disk and no
-// payload is ever logged.
+// It does not store anything. A document arrives — in the URL, or in the body
+// of POST /share — is packed or decoded in memory, is summarised, and is
+// thrown away. Nothing is written to disk and no document is ever logged.
 package web
 
 import (
@@ -116,6 +116,13 @@ func New(config Config) (*Server, error) {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// The one endpoint that takes a body, and the only reason the gate below is
+	// not the first thing in this function.
+	if r.URL.Path == SharePath {
+		s.serveShare(w, r)
+		return
+	}
+
 	// Only GET and HEAD are worth answering; a share link is read, never written.
 	// This applies to every route, health included.
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {

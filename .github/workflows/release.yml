@@ -109,7 +109,14 @@ jobs:
           grep -q 'og:description" content="6 steps' /tmp/page.html
           grep -q 'canonical" href="https://example.com/c1\.' /tmp/page.html
 
-          # One endpoint policy: read-only.
+          # The encode endpoint: a document in, a link out, no storage.
+          encoded="$(printf 'GET v3/expenses\n  - Database.where(user_id:)\n' \
+            | curl -fsS -X POST http://127.0.0.1:8080/share \
+                -H 'content-type: text/plain' --data-binary @-)"
+          grep -q '"embedded":"http://example.com/c1\.' <<<"$encoded"
+          grep -q '"steps":2' <<<"$encoded"
+
+          # Every other route stays read-only.
           status="$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:8080/$PAYLOAD")"
           test "$status" = "405"
 

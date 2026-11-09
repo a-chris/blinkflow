@@ -100,6 +100,29 @@ func Decode(payload string, limit int) (string, error) {
 	}
 }
 
+// Encode turns a document into the payload a link carries, in the same `c1.`
+// form the browser emits. That is the whole point of sharing the format rather
+// than the code: a link built by a program opens in the same app, and the
+// editor needs to know nothing about who built it.
+//
+// The bytes are the document exactly as given — no trimming, no line-ending
+// repair. Newlines are the document's structure, so a caller that wants a
+// different link must send different bytes.
+func Encode(document string) (string, error) {
+	var packed bytes.Buffer
+	writer, err := flate.NewWriter(&packed, flate.DefaultCompression)
+	if err != nil {
+		return "", fmt.Errorf("encode: %w", err)
+	}
+	if _, err := io.WriteString(writer, document); err != nil {
+		return "", fmt.Errorf("encode: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return "", fmt.Errorf("encode: %w", err)
+	}
+	return PrefixDeflate + base64.RawURLEncoding.EncodeToString(packed.Bytes()), nil
+}
+
 func decodeBase64(value string) ([]byte, error) {
 	if value == "" {
 		return nil, ErrDamaged

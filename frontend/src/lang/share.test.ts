@@ -73,6 +73,31 @@ describe.skipIf(!hasCompression)('compression', () => {
   });
 });
 
+// The server encodes with its own Go implementation (backend/internal/share,
+// behind `POST /share`), because a link an agent creates is built in Go and
+// opened in a browser. This payload was produced there, not here: if it stops
+// decoding, the two encoders have drifted — which is what the version prefix is
+// for, and what this test is meant to catch before a user opens a dead link.
+// Regenerate it by POSTing the same document to /share.
+const serverDocument = `# v3/expenses — API flow
+
+GET v3/expenses
+  gate: permission expenses.read
+    yes:
+      - Services::GetExpenses.call(user_id)   @app/services/get_expenses.rb:12
+        > AR query builder — clamps per_page, opaque cursor
+    no:
+      - 403 { error: "forbidden" }
+`;
+const serverPayload = 'c1.TI7BSsNAFEX38xWXulFQo9bVLMQuSnEn6j5MMrdhYJqZvpepFhH8CL_QLxFDS7p7cM87nDPs5hU_Mnul4vf7B4vnJ6xjejdmtXw7XQ3QuYEWmbIJqiH1OG7XQucNAOypdjyAK7xSdqGlWrvisDyyrYvxvCilDv4CwKPLudIDWnUc6knb2Nu7gw54wOIF20LZoykhespY3Ea3yfqfVWfX8RIpu20h2iKaZPzu0xR1fzPHJyiSxGK2TtIE79nP8GX-BgA';
+
+describe.skipIf(!hasCompression)('payloads built by the server', () => {
+  it('decodes a payload this module did not produce', async () => {
+    expect(serverPayload).toMatch(/^c1\.[A-Za-z0-9_-]+$/);
+    expect(await decodeShare(serverPayload)).toBe(serverDocument);
+  });
+});
+
 describe('decoding failures', () => {
   it('rejects a payload that is not a share link', async () => {
     await expect(decodeShare('hello')).rejects.toBeInstanceOf(ShareError);
