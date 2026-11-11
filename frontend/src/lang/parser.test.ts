@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contentOf, parse, stats } from './parser';
+import { parse, stats } from './parser';
 import type { Panel } from './parser';
 
 /** Flatten a panel body to readable labels: text as-is, nested panels in <>. */
@@ -56,20 +56,17 @@ describe('structure', () => {
     ].join('\n');
 
     const result = parse(doc);
-    const where = result.nodes[0];
+    const query = result.nodes[1];
 
-    expect(result.nodes).toHaveLength(2);
-    expect(where.panels).toHaveLength(1);
-    expect(where.panels[0].peek).toBe('SELECT * FROM expenses');
-    expect(bodyOf(where.panels[0])).toEqual([
-      'WHERE user_id = $1',
-      '- this is a bullet, not a step',
-    ]);
+    expect(result.nodes).toHaveLength(3);
+    expect(query.kind).toBe('fold');
+    expect(query.text).toBe('SELECT * FROM expenses');
+    expect(bodyOf(query.fold!)).toEqual(['WHERE user_id = $1', '- this is a bullet, not a step']);
   });
 
   it('dedents panel bodies to their own margin', () => {
     const doc = ['- step', '  > peek', '      deep line', '        deeper'].join('\n');
-    expect(bodyOf(parse(doc).nodes[0].panels[0])).toEqual(['deep line', '  deeper']);
+    expect(bodyOf(parse(doc).nodes[1].fold!)).toEqual(['deep line', '  deeper']);
   });
 
   it('extracts an anchor from a panel peek line', () => {
@@ -78,22 +75,22 @@ describe('structure', () => {
       '  > build_query — clamps per_page   @app/services/get_expenses.rb:34',
       '    body line',
     ].join('\n');
-    const panel = parse(doc).nodes[0].panels[0];
-    expect(panel.peek).toBe('build_query — clamps per_page');
-    expect(panel.anchor).toEqual({ path: 'app/services/get_expenses.rb', line: 34 });
-    expect(bodyOf(panel)).toEqual(['body line']);
+    const accordion = parse(doc).nodes[1];
+    expect(accordion.text).toBe('build_query — clamps per_page');
+    expect(accordion.anchor).toEqual({ path: 'app/services/get_expenses.rb', line: 34 });
+    expect(bodyOf(accordion.fold!)).toEqual(['body line']);
   });
 
   it('extracts an anchor from a peek-only panel', () => {
-    const panel = parse(['- step', '  > see @app/models/expense.rb'].join('\n')).nodes[0].panels[0];
-    expect(panel.peek).toBe('see');
-    expect(panel.anchor).toEqual({ path: 'app/models/expense.rb' });
+    const accordion = parse(['- step', '  > see @app/models/expense.rb'].join('\n')).nodes[1];
+    expect(accordion.text).toBe('see');
+    expect(accordion.anchor).toEqual({ path: 'app/models/expense.rb' });
   });
 
   it('leaves a peek without an anchor untouched', () => {
-    const panel = parse(['- step', '  > just prose'].join('\n')).nodes[0].panels[0];
-    expect(panel.peek).toBe('just prose');
-    expect(panel.anchor).toBeUndefined();
+    const accordion = parse(['- step', '  > just prose'].join('\n')).nodes[1];
+    expect(accordion.text).toBe('just prose');
+    expect(accordion.anchor).toBeUndefined();
   });
 
   it('ignores blank lines and comments', () => {
@@ -219,25 +216,25 @@ describe('notes', () => {
     expect(result.nodes[0].notes).toEqual([]);
   });
 
-  it('attaches a note written inside a body to that panel', () => {
+  it('attaches a note written inside a body to that accordion', () => {
     const doc = ['- step', '  > shell', '    # the script is idempotent', '    $ ls'].join('\n');
-    const panel = parse(doc).nodes[0].panels[0];
-    expect(panel.notes.map((n) => n.text)).toEqual(['the script is idempotent']);
-    expect(bodyOf(panel)).toEqual(['$ ls']);
+    const accordion = parse(doc).nodes[1].fold!;
+    expect(accordion.notes.map((n) => n.text)).toEqual(['the script is idempotent']);
+    expect(bodyOf(accordion)).toEqual(['$ ls']);
   });
 
   it('attaches a note written between spine lines to the accordion above', () => {
-    const doc = ['- step', '  > peek', '    body line', '  # about this panel'].join('\n');
-    const panel = parse(doc).nodes[0].panels[0];
-    expect(panel.notes.map((n) => n.text)).toEqual(['about this panel']);
-    expect(parse(doc).nodes[0].notes).toEqual([]);
+    const doc = ['- step', '  > peek', '    body line', '  # about this accordion'].join('\n');
+    const result = parse(doc);
+    expect(result.nodes[1].notes.map((n) => n.text)).toEqual(['about this accordion']);
+    expect(result.nodes[0].notes).toEqual([]);
   });
 
   it('attaches a note inside a body to the nested panel above it', () => {
     const doc = ['- step', '  > outer', '    > inner', '      sql', '    # about the inner one', '    text'].join(
       '\n',
     );
-    const outer = parse(doc).nodes[0].panels[0];
+    const outer = parse(doc).nodes[1].fold!;
     const inner = outer.body.find((i) => i.kind === 'panel');
     expect(inner?.kind === 'panel' && inner.panel.notes.map((n) => n.text)).toEqual(['about the inner one']);
     expect(outer.notes).toEqual([]);
@@ -245,9 +242,9 @@ describe('notes', () => {
 
   it('keeps an escaped hash as text', () => {
     const doc = ['- step', '  > shell', '    \\# not a note'].join('\n');
-    const panel = parse(doc).nodes[0].panels[0];
-    expect(panel.notes).toEqual([]);
-    expect(bodyOf(panel)).toEqual(['# not a note']);
+    const accordion = parse(doc).nodes[1].fold!;
+    expect(accordion.notes).toEqual([]);
+    expect(bodyOf(accordion)).toEqual(['# not a note']);
   });
 
   it('ignores an empty note', () => {
@@ -271,9 +268,10 @@ describe('nested panels', () => {
       '      SELECT 1',
       '    outro line',
     ].join('\n');
-    const outer = parse(doc).nodes[0].panels[0];
+    const node = parse(doc).nodes[1];
+    const outer = node.fold!;
 
-    expect(outer.peek).toBe('outer peek');
+    expect(node.text).toBe('outer peek');
     expect(bodyOf(outer)).toEqual(['intro line', '<inner peek>', 'outro line']);
 
     const inner = outer.body.find((i) => i.kind === 'panel');
@@ -289,7 +287,7 @@ describe('nested panels', () => {
       '      > three',
       '        leaf',
     ].join('\n');
-    const one = parse(doc).nodes[0].panels[0];
+    const one = parse(doc).nodes[1].fold!;
     const two = one.body[0];
     expect(two.kind).toBe('panel');
     if (two.kind !== 'panel') return;
@@ -303,13 +301,13 @@ describe('nested panels', () => {
     const doc = ['- step', '  > outer', '    > inner', '      inner body', '    back to outer', '  after outer'].join(
       '\n',
     );
-    const outer = parse(doc).nodes[0].panels[0];
+    const outer = parse(doc).nodes[1].fold!;
     expect(bodyOf(outer)).toEqual(['<inner>', 'back to outer']);
   });
 
   it('supports an anchor on a nested peek', () => {
     const doc = ['- step', '  > outer', '    > SQL  @app/models/expense.rb:41', '      SELECT 1'].join('\n');
-    const outer = parse(doc).nodes[0].panels[0];
+    const outer = parse(doc).nodes[1].fold!;
     const inner = outer.body.find((i) => i.kind === 'panel');
     expect(inner?.kind === 'panel' && inner.panel.anchor).toEqual({
       path: 'app/models/expense.rb',
@@ -319,7 +317,7 @@ describe('nested panels', () => {
 
   it('lets a backslash escape a literal leading greater-than', () => {
     const doc = ['- step', '  > peek', '    \\> not a panel'].join('\n');
-    expect(bodyOf(parse(doc).nodes[0].panels[0])).toEqual(['> not a panel']);
+    expect(bodyOf(parse(doc).nodes[1].fold!)).toEqual(['> not a panel']);
   });
 
   it('counts nested panels in the stats', () => {
@@ -329,48 +327,171 @@ describe('nested panels', () => {
 });
 
 describe('source order', () => {
-  it('attaches a panel to the sibling above it, not to the ancestor', () => {
+  it('puts an accordion under the line it is indented in, not on an ancestor', () => {
+    const doc = [
+      '- root step',
+      '  - first child',
+      '  - second child',
+      '    > detail about the second child',
+      '  - third child',
+    ].join('\n');
+    const result = parse(doc);
+    const root = result.nodes[0];
+    expect(root.children.map((c) => c.text)).toEqual(['first child', 'second child', 'third child']);
+    const detail = root.children[1].children[0];
+    expect(detail.kind).toBe('fold');
+    expect(detail.text).toBe('detail about the second child');
+    expect(root.children[0].children).toEqual([]);
+  });
+
+  it('turns a `>` at the step above its own indent into a fold', () => {
     const doc = [
       '- root step',
       '  - first child',
       '  - second child',
       '  > detail about the second child',
+      '    - one fact',
       '  - third child',
     ].join('\n');
     const result = parse(doc);
     const root = result.nodes[0];
-    expect(root.panels).toHaveLength(0);
-    expect(root.children.map((c) => c.text)).toEqual(['first child', 'second child', 'third child']);
-    expect(root.children[1].panels.map((p) => p.peek)).toEqual(['detail about the second child']);
+    expect(root.children.map((c) => c.kind)).toEqual(['step', 'step', 'fold', 'step']);
+    const fold = root.children[2];
+    expect(fold.text).toBe('detail about the second child');
+    expect(fold.fold?.body.map((i) => (i.kind === 'text' ? i.text : '<panel>'))).toEqual(['- one fact']);
+    expect(fold.fold?.notes).toEqual([]);
   });
 
-  it('accepts a panel indented at the same level as the line it follows', () => {
-    const result = parse(['- step', '> detail'].join('\n'));
+  it('turns a `>` indented at the same level as the line it follows into a fold', () => {
+    const result = parse(['- step', '> detail', '  - one fact'].join('\n'));
     expect(result.issues).toEqual([]);
-    expect(result.nodes[0].panels).toHaveLength(1);
+    expect(result.nodes[1].kind).toBe('fold');
+    expect(result.nodes[1].fold?.body).toHaveLength(1);
   });
 
-  it('keeps panels and children in the order they were written', () => {
+  it('is the element itself as a first child, not an aside on the parent', () => {
     const doc = [
-      '- step',
-      '  > note written first',
-      '  - child one',
-      '  - child two',
-      '> note written last',
+      'gate: checkout',
+      '  yes:',
+      '    > Charge.create(amount:, source:)   @lib/charge.rb:9',
+      '      # the only irreversible step',
+      '      - 900ms p99, 30s timeout',
     ].join('\n');
-    const items = contentOf(parse(doc).nodes[0]);
-    expect(items.map((i) => (i.kind === 'panel' ? `panel:${i.panel.peek}` : `node:${i.node.text}`))).toEqual([
-      'panel:note written first',
-      'node:child one',
-      'node:child two',
-      'panel:note written last',
+    const result = parse(doc);
+
+    const arm = result.nodes[1];
+    expect(arm.kind).toBe('arm');
+    expect(arm.children.map((child) => [child.kind, child.text])).toEqual([
+      ['fold', 'Charge.create(amount:, source:)'],
+    ]);
+    const charge = arm.children[0];
+    expect(charge.fold?.body).toHaveLength(1);
+    expect(charge.fold?.notes.map((note) => note.text)).toEqual(['the only irreversible step']);
+    expect(charge.anchor?.path).toBe('lib/charge.rb');
+    expect(stats(result).nodes).toBe(3);
+    expect(stats(result).panels).toBe(1);
+  });
+
+  it('stands as a component of its own when nothing is above it', () => {
+    const doc = ['> shell transcript', '  $ ls', '  the only irreversible step'].join('\n');
+    const result = parse(doc);
+
+    expect(result.issues).toEqual([]);
+    expect(result.nodes).toHaveLength(1);
+    const block = result.nodes[0];
+    expect(block.kind).toBe('fold');
+    expect(block.marker).toBe('>');
+    expect(block.text).toBe('shell transcript');
+    expect(block.fold?.body.map((i) => (i.kind === 'text' ? i.text : '<panel>'))).toEqual([
+      '$ ls',
+      'the only irreversible step',
+    ]);
+    expect(stats(result).nodes).toBe(1);
+    expect(stats(result).panels).toBe(1);
+  });
+
+  it('stands on its own only when no line above can own it', () => {
+    const doc = ['  > shell transcript', '    $ ls', '> second block', '  more'].join('\n');
+    const result = parse(doc);
+
+    // The first block has nothing above it; the second one follows a block at a
+    // shallower indent, which is no owner either.
+    expect(result.nodes.map((n) => [n.kind, n.indent])).toEqual([
+      ['fold', 2],
+      ['fold', 0],
+    ]);
+    expect(result.issues).toEqual([]);
+    expect(stats(result).panels).toBe(2);
+  });
+
+  it('keeps a `+` line as the plain step it used to be, and says so', () => {
+    const doc = ['+ Deploy::Run.call', '  - one fact'].join('\n');
+    const result = parse(doc);
+
+    expect(result.nodes[0].kind).toBe('step');
+    expect(result.nodes[0].text).toBe('+ Deploy::Run.call');
+    expect(result.nodes[0].children[0].text).toBe('one fact');
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0].severity).toBe('hint');
+  });
+
+  it('is a step and nothing more when a fold hides nothing', () => {
+    const doc = ['> Deploy::Run.call', '- tail step'].join('\n');
+    const result = parse(doc);
+
+    expect(result.issues).toEqual([]);
+    expect(result.nodes.map((n) => n.kind)).toEqual(['fold', 'step']);
+    // Nothing to open, so there is no accordion and no panel to count.
+    expect(result.nodes[0].fold).toBeUndefined();
+    expect(stats(result).panels).toBe(0);
+  });
+
+  it('is a step and nothing more when a sibling-indent `>` hides nothing', () => {
+    const doc = ['- step one', '> just a note, no body', '- step two'].join('\n');
+    const result = parse(doc);
+
+    expect(result.nodes.map((n) => n.kind)).toEqual(['step', 'fold', 'step']);
+    expect(result.nodes[1].text).toBe('just a note, no body');
+    expect(result.nodes[1].fold).toBeUndefined();
+    expect(stats(result).panels).toBe(0);
+  });
+
+  it('adds a fold at a sibling’s indent to that sibling group', () => {
+    const doc = [
+      '- parent',
+      '  - Child::Call.call()',
+      '  > Charge.create(amount:)   @lib/charge.rb:3',
+      '    - one fact',
+      '    - another fact',
+      '  - plain sibling',
+    ].join('\n');
+    const result = parse(doc);
+    expect(result.issues).toEqual([]);
+    const fold = result.nodes[2];
+    expect(fold.kind).toBe('fold');
+    expect(fold.marker).toBe('>');
+    expect(fold.anchor?.path).toBe('lib/charge.rb');
+    expect(fold.fold?.body).toHaveLength(2);
+    expect(result.nodes[3].text).toBe('plain sibling');
+    const s = stats(result);
+    expect(s.nodes).toBe(4);
+    expect(s.panels).toBe(1);
+  });
+
+  it('keeps children in the order they were written', () => {
+    const doc = ['- step', '  > accordion first', '    body', '  - child one', '  - child two'].join('\n');
+    const children = parse(doc).nodes[0].children;
+    expect(children.map((c) => `${c.kind}:${c.text}`)).toEqual([
+      'fold:accordion first',
+      'step:child one',
+      'step:child two',
     ]);
   });
 
-  it('renders a panel written after the children below them', () => {
-    const doc = ['- call', '  - a', '  - b', '> query for the call', '  SELECT 1'].join('\n');
-    const items = contentOf(parse(doc).nodes[0]);
-    expect(items.map((i) => i.kind)).toEqual(['node', 'node', 'panel']);
+  it('keeps a document-level accordion at the top, in source order', () => {
+    const doc = ['> first block', '  body', '- step', '> second block', '  body'].join('\n');
+    const result = parse(doc);
+    expect(result.roots.map((n) => `${n.kind}:${n.text}`)).toEqual(['fold:first block', 'step:step', 'fold:second block']);
   });
 });
 
@@ -402,15 +523,27 @@ describe('anchors', () => {
 });
 
 describe('errors', () => {
-  it('reports a panel with no parent', () => {
-    const result = parse('> orphan');
+  it('reports a tab, and keeps drawing the line', () => {
+    const result = parse(['- step', '\t- tabbed step'].join('\n'));
+
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0].severity).toBe('error');
-    expect(result.nodes).toHaveLength(0);
+    expect(result.issues[0].line).toBe(2);
+    expect(result.nodes.map((node) => node.text)).toEqual(['step', 'tabbed step']);
   });
 
   it('reports the source line of a problem', () => {
-    const result = parse(['# nothing to attach to', '> orphan'].join('\n'));
-    expect(result.issues[0].line).toBe(2);
+    const result = parse(['# a note', '', '- step', '\t- tabbed'].join('\n'));
+    expect(result.issues[0].line).toBe(4);
+  });
+
+  it('has nothing to say about a `>` at the top of a document', () => {
+    // A block with no line above it is a component in its own right, not a
+    // mistake: a document is allowed to open with one.
+    const result = parse(['> shell transcript', '  $ ls', '  still here'].join('\n'));
+
+    expect(result.issues).toEqual([]);
+    expect(result.nodes.map((node) => node.text)).toEqual(['shell transcript']);
+    expect(result.nodes[0].fold?.body).toHaveLength(2);
   });
 });

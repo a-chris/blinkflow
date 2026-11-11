@@ -93,7 +93,9 @@ func get(t *testing.T, server http.Handler, target string) *httptest.ResponseRec
 	return recorder
 }
 
-const document = "# v3/expenses — API flow\n# second note line\n\nGET v3/expenses\n  gate: permission expenses.read\n  > AR query builder\n"
+// The `>` carries a body on purpose: a peek-only panel and a fold are spelled
+// differently now, and the card this fixture checks has a panel on it.
+const document = "# v3/expenses — API flow\n# second note line\n\nGET v3/expenses\n  gate: permission expenses.read\n  > AR query builder\n    where user_id = $1\n"
 
 func TestPayloadPageCarriesTheDocumentCard(t *testing.T) {
 	server, _ := harness(t, web.Config{Dev: true})
@@ -108,7 +110,7 @@ func TestPayloadPageCarriesTheDocumentCard(t *testing.T) {
 
 	for _, want := range []string{
 		`<meta property="og:title" content="v3/expenses — API flow" />`,
-		`<meta property="og:description" content="2 steps · 0 arms · 1 panel · 1 note · gate: permission expenses.read" />`,
+		`<meta property="og:description" content="3 steps · 0 arms · 1 panel · 1 note · gate: permission expenses.read" />`,
 		`<meta property="og:site_name" content="Blinkflow" />`,
 		`<meta name="twitter:card" content="summary" />`,
 		`<link rel="canonical" href="http://example.com/` + payload + `" />`,

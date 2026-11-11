@@ -1,0 +1,9 @@
+{
+  "steps": 10,
+  "arms": 2,
+  "panels": 2,
+  "notes": 3,
+  "firstNote": "Deploy — one build, one rollout",
+  "firstStep": "POST /deploy",
+  "firstGate": "tests green"
+}

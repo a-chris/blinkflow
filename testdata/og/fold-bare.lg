@@ -1,0 +1,20 @@
+# Deploy — one build, one rollout
+
+# The shapes a `>` line takes: the element itself (first child of a step, and a
+# block that opens the document), and a line that hides nothing. Both
+# implementations count all of them the same way.
+
+> shell transcript
+  $ bundle exec rake db:migrate
+  the only irreversible step
+
+gate: ready
+  yes:
+    > Charge.create(amount:, source:)   @lib/charge.rb:9
+      # the only irreversible step
+      - 900ms p99, 30s timeout
+      > retries reuse the idempotency key
+    > bare accordion, nothing under it
+    - Sidekiq.push(job)
+      > a nested accordion
+        - detail line

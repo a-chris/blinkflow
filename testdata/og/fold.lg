@@ -1,0 +1,16 @@
+# Deploy — one build, one rollout
+
+@ci
+POST /deploy
+  gate: tests green
+    no:
+      - 409 { error: "tests_failed" }
+    yes:
+      > build and roll out the new image   @lib/docker/build.rb:12
+        # cache from the previous image, 40s warm
+        - pushes to the internal registry
+      > Kubernetes.rollout(image:)   @lib/kubernetes/rollout.rb:20
+        # watches the rollout, 10m deadline
+        - rolls back automatically on failed probes
+      ~ Events.produce("deployed", image:)
+    < 202 { id:, status: "rolling_out" }

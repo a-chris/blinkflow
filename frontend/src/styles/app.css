@@ -549,12 +549,137 @@ body.is-dragging {
   border-left: 2px solid rgba(255, 255, 255, 0.11);
 }
 
-.bf-panel.is-open > .bf-panel-toggle {
-  color: var(--text);
-  border-color: rgba(255, 255, 255, 0.16);
+.bf-panel.is-open > .bf-panel-body {
+  border-left-color: rgba(126, 231, 135, 0.32);
 }
 
-.bf-panel.is-open > .bf-panel-body {
+/* ---------- accordions ---------- */
+
+/* The `.bf-panel*` names below are older than the word: they are the accordion
+   internals — a head with its toggle, and the body that opens under it. */
+
+/* A `>` line is a node like any other: the marker sits in the spine where a
+   step's glyph would, the line sits in the text column, and the detail opens
+   underneath. That is what keeps an accordion in exactly the place it was
+   written — first child, sibling, or block of its own. */
+.bf-fold > .bf-main > .bf-panel-head {
+  min-width: 0;
+  /* the surface hugs the line it carries, it does not stretch into a bar */
+  width: fit-content;
+  max-width: 100%;
+  /* a long call next to its anchor and note must not strangle the toggle:
+     on a narrow container the anchor drops to a second row instead */
+  flex-wrap: wrap;
+  /* The whole line — text, count, note, anchor — sits on one surface, because
+     the line is the thing you click, not a card wrapped around it. */
+  padding: 1px 8px 1px 5px;
+  margin-left: -5px;
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.085);
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.bf-fold:hover > .bf-main > .bf-panel-head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.04));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.17);
+}
+
+.bf-fold.is-open > .bf-main > .bf-panel-head {
+  background: linear-gradient(180deg, rgba(126, 231, 135, 0.1), rgba(126, 231, 135, 0.035));
+  box-shadow: inset 0 0 0 1px rgba(126, 231, 135, 0.3);
+}
+
+/* The toggle is the text on that surface: no box of its own. */
+.bf-fold-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* the surface around the line carries the hover, not the toggle inside it */
+.bf-fold-toggle:hover {
+  background: none;
+}
+
+.bf-fold-toggle:focus-visible {
+  outline: 2px solid rgba(126, 231, 135, 0.6);
+  outline-offset: 1px;
+}
+
+/* The accordion's marker is the one box in the spine: a line that opens has to
+   be recognisable before it is read. Compact on purpose — the tile is the
+   affordance, not a card wrapped around the line. */
+.bf-fold > .bf-marker .bf-glyph {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  /* centred on the first line of the line, not on the node: the node grows when
+     the body opens, the tile must not follow it down */
+  margin-top: 3.5px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  color: #cdd8e4;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.16s ease, color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+
+.bf-fold:hover > .bf-marker .bf-glyph {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.08));
+  color: #ffffff;
+}
+
+.bf-fold.is-open > .bf-marker .bf-glyph {
+  transform: rotate(90deg);
+  border-color: rgba(126, 231, 135, 0.45);
+  background: linear-gradient(180deg, rgba(126, 231, 135, 0.2), rgba(126, 231, 135, 0.07));
+  color: var(--accent);
+}
+
+/* A line that hides nothing is still an accordion line, just not clickable:
+   same colour, no tile. */
+.bf-node[data-kind="fold"]:not(.bf-fold) > .bf-marker .bf-glyph {
+  color: #cdd8e4;
+}
+
+/* The line reads a shade stronger than a step: it is the thing to click. */
+.bf-fold-toggle .bf-text {
+  color: #eaf1f8;
+  font-weight: 500;
+}
+
+.bf-fold.is-open > .bf-main > .bf-panel-head > .bf-fold-toggle .bf-text {
+  color: #ffffff;
+}
+
+/* The count is the promise of what is inside, so it is legible while closed. */
+.bf-fold-toggle .bf-panel-count {
+  background: rgba(255, 255, 255, 0.1);
+  color: #a7b3c1;
+}
+
+.bf-fold.is-open > .bf-main > .bf-panel-head > .bf-fold-toggle .bf-panel-count {
+  background: rgba(126, 231, 135, 0.16);
+  color: var(--accent);
+}
+
+.bf-fold.is-open > .bf-main > .bf-panel-body {
   border-left-color: rgba(126, 231, 135, 0.32);
 }
 

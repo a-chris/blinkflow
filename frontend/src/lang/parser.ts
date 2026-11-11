@@ -2,9 +2,9 @@
  * blinkflow parser
  *
  * The whole language: indentation is the tree, a handful of line-leading
- * markers give a line its kind, `>` opens a collapsible detail panel, and a
- * trailing @path:line is a source anchor. Panels are raw text; everything
- * else is a node.
+ * markers give a line its kind, `>` makes a line an accordion that hides its
+ * detail, and a trailing @path:line is a source anchor. An accordion body is
+ * raw text; every line is a node.
  */
 
 export type NodeKind =
@@ -14,7 +14,8 @@ export type NodeKind =
   | 'return'
   | 'actor'
   | 'gate'
-  | 'arm';
+  | 'arm'
+  | 'fold';
 
 export type ReservedArm = 'gate' | 'yes' | 'no' | 'else' | 'err';
 
@@ -39,8 +40,12 @@ export type PanelBodyItem =
   | { kind: 'text'; text: string; line: number }
   | { kind: 'panel'; panel: Panel; line: number };
 
+/**
+ * What a `>` line hides. On the line itself this is the accordion body; inside
+ * another body it is a nested accordion, and `peek` holds its title.
+ */
 export interface Panel {
-  /** Summary shown while collapsed. */
+  /** Title of a nested accordion; empty on the line's own body. */
   peek: string;
   /** A source anchor written at the end of the peek line. */
   anchor?: Anchor;
@@ -49,7 +54,7 @@ export interface Panel {
    * Text keeps its relative indentation, minus the body's common margin.
    */
   body: PanelBodyItem[];
-  /** `#` notes written against this panel. An accordion is a component too. */
+  /** `#` notes written against this body. A nested accordion is a component too. */
   notes: Note[];
   line: number;
 }
@@ -65,7 +70,11 @@ export interface LNode {
   depth: number;
   line: number;
   anchor?: Anchor;
-  panels: Panel[];
+  /**
+   * A `>` line: the line itself is the accordion, and the deeper lines hide
+   * inside it. Absent when the line hides nothing, which makes it a plain line.
+   */
+  fold?: Panel;
   /** `#` notes written under this line. */
   notes: Note[];
   children: LNode[];
@@ -129,7 +138,8 @@ function measure(line: string): MeasuredLine {
   return { indent, body: line.slice(index).trimEnd(), tabbed };
 }
 
-function isPanelLine(body: string): boolean {
+/** `> text` is an accordion line: the line is the element, its detail hides inside. */
+function isAccordionLine(body: string): boolean {
   return body === '>' || body.startsWith('> ') || body.startsWith('>\t');
 }
 
@@ -201,6 +211,17 @@ function classify(body: string): Classified {
     };
   }
 
+  // `+` used to be a fold marker. It is a plain step again, and the hint says
+  // how to write what the line was trying to say.
+  if (body === '+' || body.startsWith('+ ') || body.startsWith('+\t')) {
+    return {
+      kind: 'step',
+      text: body,
+      marker: '-',
+      hint: '`+` is not a marker — a fold is `>` at the step\u2019s own indent',
+    };
+  }
+
   // An unmarked line is still a step: a flow's first line rarely needs a dash,
   // and prose belongs in a `>` panel.
   return { kind: 'step', text: body, marker: '-' };
@@ -239,6 +260,25 @@ function boundOf(raw: RawLine[], start: number, openerIndent: number): number {
     end += 1;
   }
   return end;
+}
+
+/** The deeper-indented lines a `>` opens; blank lines belong to the body. */
+function collectBodyLines(lines: string[], start: number, indent: number): { lines: RawLine[]; next: number } {
+  const raw: RawLine[] = [];
+  let index = start;
+  while (index < lines.length) {
+    const next = lines[index];
+    if (next.trim() === '') {
+      raw.push({ indent: -1, raw: '', line: index + 1 });
+      index += 1;
+      continue;
+    }
+    const measured = measure(next);
+    if (measured.indent <= indent) break;
+    raw.push({ indent: measured.indent, raw: next.trimEnd(), line: index + 1 });
+    index += 1;
+  }
+  return { lines: raw, next: index };
 }
 
 /**
@@ -346,8 +386,8 @@ function tidyNotes(notes: Note[]): void {
 }
 
 /**
- * The line a `>` panel or a `#` note belongs to: the nearest line above at the
- * same or a shallower indent, not a distant ancestor.
+ * The line a `#` note belongs to: the nearest line above at the same or a
+ * shallower indent, not a distant ancestor.
  */
 function attachTarget(nodes: LNode[], indent: number): LNode | undefined {
   for (let seen = nodes.length - 1; seen >= 0; seen -= 1) {
@@ -362,13 +402,44 @@ export function parse(source: string): ParseResult {
   const nodes: LNode[] = [];
   const stack: LNode[] = [];
   const documentNotes: Note[] = [];
-  /** Everything a `#` line can attach to, in source order. */
-  const components: Array<{ indent: number; notes: Note[] }> = [];
   let openNote: NoteChain | null = null;
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const hinted = new Set<string>();
 
+  /** Append one fold node: the `>` is the accordion, the deeper lines hide in it. */
   let index = 0;
+  const appendFold = (
+    peek: string,
+    anchor: Anchor | undefined,
+    raw: RawLine[],
+    indent: number,
+    lineNo: number,
+  ): void => {
+    const fold = buildPanel('', undefined, raw, 0, raw.length, lineNo);
+    const node: LNode = {
+      kind: 'fold',
+      text: peek,
+      marker: '>',
+      indent,
+      depth: 0,
+      line: lineNo,
+      notes: [],
+      children: [],
+    };
+    if (anchor) node.anchor = anchor;
+    while (stack.length > 0 && stack[stack.length - 1].indent >= indent) stack.pop();
+    const parent = stack[stack.length - 1];
+    node.depth = parent ? parent.depth + 1 : 0;
+    // A fold with nothing under it has nothing to open: it is just a step, and
+    // the notes written in the (empty) body are all it owns.
+    if (fold.body.length > 0) node.fold = fold;
+    else node.notes.push(...fold.notes);
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+    nodes.push(node);
+    stack.push(node);
+  };
+
   while (index < lines.length) {
     const lineNo = index + 1;
     const { indent, body, tabbed } = measure(lines[index]);
@@ -389,14 +460,7 @@ export function parse(source: string): ParseResult {
 
     if (body.startsWith('#')) {
       const text = body.replace(/^#+\s*/, '').trim();
-      let owner: Note[] | undefined;
-      for (let seen = components.length - 1; seen >= 0; seen -= 1) {
-        if (components[seen].indent <= indent) {
-          owner = components[seen].notes;
-          break;
-        }
-      }
-      const target = owner ?? documentNotes;
+      const target = attachTarget(nodes, indent)?.notes ?? documentNotes;
       if (text === '' && !openNote) continue;
       openNote = addNoteLine(openNote, indent, target, lineNo, text);
       continue;
@@ -404,36 +468,15 @@ export function parse(source: string): ParseResult {
 
     openNote = null;
 
-    if (isPanelLine(body)) {
+    if (isAccordionLine(body)) {
+      // A `>` is a component wherever it is written: at the top of a document, as
+      // the first child of a step, or as one more line in a sibling group. It
+      // never becomes an aside hanging off a shallower line — the element itself
+      // is the accordion, so its place in the tree is its own indent.
       const { text: peek, anchor: peekAnchor } = extractAnchor(body.slice(1).trim());
-      // A panel written between siblings belongs to the sibling above it, so it
-      // renders where it was written.
-      const target = attachTarget(nodes, indent);
-      if (!target) {
-        issues.push({
-          line: lineNo,
-          message: 'panel `>` has no line above it — indent it under the step it describes',
-          severity: 'error',
-        });
-        continue;
-      }
-
-      const raw: RawLine[] = [];
-      while (index < lines.length) {
-        const next = lines[index];
-        if (next.trim() === '') {
-          raw.push({ indent: -1, raw: '', line: index + 1 });
-          index += 1;
-          continue;
-        }
-        const measured = measure(next);
-        if (measured.indent <= indent) break;
-        raw.push({ indent: measured.indent, raw: next.trimEnd(), line: index + 1 });
-        index += 1;
-      }
-      const panel = buildPanel(peek, peekAnchor, raw, 0, raw.length, lineNo);
-      target.panels.push(panel);
-      components.push({ indent, notes: panel.notes });
+      const collected = collectBodyLines(lines, index, indent);
+      index = collected.next;
+      appendFold(peek, peekAnchor, collected.lines, indent, lineNo);
       continue;
     }
 
@@ -454,7 +497,6 @@ export function parse(source: string): ParseResult {
       indent,
       depth: parent ? parent.depth + 1 : 0,
       line: lineNo,
-      panels: [],
       notes: [],
       children: [],
     };
@@ -467,34 +509,15 @@ export function parse(source: string): ParseResult {
 
     nodes.push(node);
     stack.push(node);
-    components.push({ indent: node.indent, notes: node.notes });
   }
 
   tidyNotes(documentNotes);
   for (const node of nodes) {
     tidyNotes(node.notes);
-    eachPanel(node.panels, (panel) => tidyNotes(panel.notes));
+    if (node.fold) eachPanel([node.fold], (panel) => tidyNotes(panel.notes));
   }
 
   return { roots, nodes, notes: documentNotes, issues };
-}
-
-/** Panels and child nodes share one source order. */
-export type ContentItem =
-  | { kind: 'panel'; line: number; panel: Panel }
-  | { kind: 'node'; line: number; node: LNode };
-
-/**
- * Merge a node's panels and children back into the order they were written.
- * A panel that appears above the children belongs above them; one written
- * further down stays down.
- */
-export function contentOf(node: LNode): ContentItem[] {
-  const items: ContentItem[] = [
-    ...node.panels.map((panel) => ({ kind: 'panel' as const, line: panel.line, panel })),
-    ...node.children.map((child) => ({ kind: 'node' as const, line: child.line, node: child })),
-  ];
-  return items.sort((a, b) => a.line - b.line);
 }
 
 export interface FlowStats {
@@ -521,10 +544,19 @@ export function stats(result: ParseResult): FlowStats {
   let arms = 0;
   for (const node of result.nodes) {
     notes += node.notes.length;
-    eachPanel(node.panels, (panel) => {
+    if (node.fold) {
+      // The line is a step and its `>` is an opener: it counts on both sides.
       panels += 1;
-      notes += panel.notes.length;
-    });
+      notes += node.fold.notes.length;
+      for (const item of node.fold.body) {
+        if (item.kind === 'panel') {
+          eachPanel([item.panel], (panel) => {
+            panels += 1;
+            notes += panel.notes.length;
+          });
+        }
+      }
+    }
     if (node.kind === 'arm') arms += 1;
   }
   return {

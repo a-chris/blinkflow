@@ -10,16 +10,19 @@ package flow
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 // Stats counts the parts of a document, matching the playground's status bar.
 type Stats struct {
-	// Steps counts node lines. Panels are not nodes, and panel bodies are text.
+	// Steps counts node lines, folds included. Panels are not nodes, and
+	// panel bodies are text.
 	Steps int
 	// Arms counts `label:` lines, reserved and free-form.
 	Arms int
-	// Panels counts `>` openers, including nested ones.
+	// Panels counts `>` openers, including nested ones: the field name is the
+	// card's, the language calls the line an accordion.
 	Panels int
 	// Notes counts `#` notes, with consecutive lines merging into one note.
 	Notes int
@@ -69,11 +72,16 @@ type component struct {
 	tally  *tally
 }
 
+// lineBreaks mirrors the parser's `source.replace(/\r\n?/g, "\n")`: a lone CR
+// separates lines just like a CRLF, or the two implementations would disagree
+// about how many steps a document has.
+var lineBreaks = strings.NewReplacer("\r\n", "\n", "\r", "\n")
+
 // Analyze describes a document for a link preview.
 func Analyze(source string) Analysis {
 	a := &analyzer{}
 	a.document = a.newTally()
-	a.walk(toRaw(strings.Split(strings.ReplaceAll(source, "\r\n", "\n"), "\n")))
+	a.walk(toRaw(strings.Split(lineBreaks.Replace(source), "\n")))
 	return a.Analysis
 }
 
@@ -123,13 +131,17 @@ func (a *analyzer) walk(lines []rawLine) {
 
 		chain = nil
 
-		if isPanelLine(body) {
-			body, next := collectBody(lines, index, indent)
+		if isAccordionLine(body) {
+			// A `>` is a component wherever it is written, so it counts as a step
+			// and, when it hides anything, its opener as a panel.
+			text := stripAnchor(strings.TrimSpace(strings.TrimPrefix(body, ">")))
+			inner, next := collectBody(lines, index, indent)
 			index = next
-			a.Panels++
-			panel := a.newTally()
-			a.scanPanelBody(body, panel)
-			components = append(components, component{indent: indent, tally: panel})
+			a.Steps++
+			if a.FirstStep == "" && text != "" {
+				a.FirstStep = text
+			}
+			components = append(components, component{indent: indent, tally: a.accordionBody(inner)})
 			continue
 		}
 
@@ -147,6 +159,35 @@ func (a *analyzer) walk(lines []rawLine) {
 		}
 		components = append(components, component{indent: indent, tally: a.newTally()})
 	}
+}
+
+// accordionBody counts what an accordion hides and returns the owner the `#` lines
+// after it belong to. An accordion with nothing under it opens nothing — the
+// parser stores no body and draws the line plain — so it counts as a step only;
+// the tally exists either way, because it is the note owner.
+func (a *analyzer) accordionBody(body []rawLine) *tally {
+	panel := a.newTally()
+	// The body is scanned either way: its `#` lines are notes on the accordion,
+	// and the parser moves them onto the line when there is no detail at all.
+	a.scanPanelBody(body, panel)
+	if hasContent(body) {
+		a.Panels++
+	}
+	return panel
+}
+
+// hasContent reports whether a body holds anything the parser keeps in it. A
+// `#` line belongs to the accordion as a note and blanks are trimmed, so a body
+// of notes and blanks alone is no body at all — the line is drawn plain and
+// counts no panel.
+func hasContent(body []rawLine) bool {
+	for _, line := range body {
+		if line.blank || strings.HasPrefix(line.text, "#") {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 // scanPanelBody counts the nested panels and the notes inside one panel body.
@@ -176,7 +217,7 @@ func (a *analyzer) scanPanelBody(body []rawLine, own *tally) {
 
 		chain = nil
 
-		if isPanelLine(line.text) {
+		if isAccordionLine(line.text) {
 			nested, next := collectBody(body, index, line.indent)
 			index = next
 			a.Panels++
@@ -262,7 +303,9 @@ func measure(line string) (int, string) {
 	return indent, ""
 }
 
-func isPanelLine(body string) bool {
+// isAccordionLine mirrors the parser: `>` makes a line an accordion, which is a
+// component wherever it is written — first child, sibling, or block of its own.
+func isAccordionLine(body string) bool {
 	return body == ">" || strings.HasPrefix(body, "> ") || strings.HasPrefix(body, ">\t")
 }
 
@@ -274,16 +317,38 @@ func noteText(body string) string {
 // anchor, not part of what the line says, so the card must not show it.
 var anchorTail = regexp.MustCompile(`(?:^|\s)@([^\s@]+)$`)
 
+// stripAnchor is the parser's extractAnchor, minus the anchor it does not use:
+// a suffix that is not a well-formed anchor stays in the text, so a malformed
+// one never silently shortens the card's title.
 func stripAnchor(text string) string {
 	match := anchorTail.FindStringSubmatchIndex(text)
 	if match == nil {
 		return text
 	}
+	payload := text[match[2]:match[3]]
 	// `@user` is an actor, not a path: anchors have a slash or a dot in them.
-	if !strings.ContainsAny(text[match[2]:match[3]], "./") {
+	if !strings.ContainsAny(payload, "./") {
+		return text
+	}
+	parts := strings.Split(payload, ":")
+	if len(parts) > 3 || !numericTail(parts[1:]) {
 		return text
 	}
 	return strings.TrimRight(text[:match[0]], " \t")
+}
+
+// numericTail reports whether every optional `:line[:column]` part is a number.
+// An empty part is absent, which is how the parser reads a trailing colon.
+func numericTail(parts []string) bool {
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		if _, err := strconv.Atoi(part); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 // classify names a node line. Only the kind matters for counting, but "arm" and

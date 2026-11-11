@@ -99,10 +99,106 @@ func TestAnalyzeEdgeCases(t *testing.T) {
 			want:   flow.Analysis{},
 		},
 		{
-			name:   "panel text is never a step",
-			source: "- a\n  > panel\n    - not a step\n",
+			name:   "accordion body text is never a step",
+			source: "- a\n  > accordion\n    - not a step\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 2, Panels: 1},
+				FirstStep: "a",
+			},
+		},
+		{
+			name:   "a fold with nothing under it is a step, not a panel",
+			source: "- a\n> Deploy::Run.call\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 2},
+				FirstStep: "a",
+			},
+		},
+		{
+			name:   "a `>` at a node's own indent that hides nothing is a step, not a panel",
+			source: "- a\n> peek only\n- b\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 3},
+				FirstStep: "a",
+			},
+		},
+		{
+			name:   "a `>` with nothing above it is a component of its own",
+			source: "> shell transcript\n  $ ls\n",
 			want: flow.Analysis{
 				Stats:     flow.Stats{Steps: 1, Panels: 1},
+				FirstStep: "shell transcript",
+			},
+		},
+		{
+			name:   "a `>` with nothing above it and nothing under it is a step",
+			source: "> shell transcript\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 1},
+				FirstStep: "shell transcript",
+			},
+		},
+		{
+			name:   "a fold with nothing under it still owns the notes after it",
+			source: "> Deploy::Run.call\n# the only irreversible step\n- b\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 2, Notes: 1},
+				FirstStep: "Deploy::Run.call",
+			},
+		},
+		{
+			name:   "a blank line body is no body",
+			source: "> Deploy::Run.call\n\n   \n- b\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 2},
+				FirstStep: "Deploy::Run.call",
+			},
+		},
+		{
+			name:   "a fold counts as a step and a panel",
+			source: "- a\n> Jev::Client.classify(state:)\n  - one fact\n  > nested peek\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 2, Panels: 2},
+				FirstStep: "a",
+			},
+		},
+		{
+			name:   "a `>` indented under a line is a component of that line, not an aside",
+			source: "- a\n  > peek\n    - body\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 2, Panels: 1},
+				FirstStep: "a",
+			},
+		},
+		{
+			name:   "a body of notes and blanks is no body",
+			source: "> peek\n  # a note, no detail\n\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 1, Notes: 1},
+				FirstStep: "peek",
+			},
+		},
+		{
+			name:   "a malformed anchor stays part of the line",
+			source: "- call it @app/x.go:nope\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 1},
+				FirstStep: "call it @app/x.go:nope",
+			},
+		},
+		{
+			name:   "a lone CR separates lines",
+			source: "- a\r- b\r",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 2},
+				FirstStep: "a",
+			},
+		},
+		{
+			name:   "a `+` line is a plain step again",
+			source: "- a\n  + Child::Call.call()\n    - one fact\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 3},
 				FirstStep: "a",
 			},
 		},

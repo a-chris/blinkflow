@@ -19,24 +19,24 @@ describe('render', () => {
     expect(root.querySelector<HTMLElement>('[data-reserved="else"]')).not.toBeNull();
   });
 
-  it('renders a panel collapsed, showing only the peek line', () => {
+  it('renders an accordion collapsed, showing only its line', () => {
     const root = renderFlow(parse(['- step', '  > SELECT * FROM expenses', '    WHERE user_id = $1'].join('\n')), options);
 
-    const toggle = root.querySelector<HTMLButtonElement>('.bf-panel-toggle');
-    const body = root.querySelector<HTMLElement>('.bf-panel-body');
+    const toggle = root.querySelector<HTMLButtonElement>('.bf-fold-toggle');
+    const body = root.querySelector<HTMLElement>('.bf-fold .bf-panel-body');
     expect(toggle).not.toBeNull();
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
-    expect(toggle?.querySelector('.bf-peek')?.textContent).toBe('SELECT * FROM expenses');
+    expect(toggle?.querySelector('.bf-text')?.textContent).toBe('SELECT * FROM expenses');
     expect(body?.hidden).toBe(true);
     expect(body?.textContent).toContain('WHERE user_id = $1');
   });
 
-  it('opens and closes a panel on click', () => {
+  it('opens and closes an accordion on click', () => {
     const root = renderFlow(parse(['- step', '  > peek', '    body line'].join('\n')), options);
-    const toggle = root.querySelector<HTMLButtonElement>('.bf-panel-toggle')!;
-    const body = root.querySelector<HTMLElement>('.bf-panel-body')!;
-    const panel = root.querySelector<HTMLElement>('.bf-panel')!;
-    const glyph = toggle.querySelector('.bf-panel-glyph')!;
+    const toggle = root.querySelector<HTMLButtonElement>('.bf-fold-toggle')!;
+    const body = root.querySelector<HTMLElement>('.bf-fold .bf-panel-body')!;
+    const panel = root.querySelector<HTMLElement>('.bf-fold')!;
+    const glyph = panel.querySelector('.bf-marker .bf-glyph')!;
 
     expect(glyph.textContent).toBe('>');
 
@@ -56,14 +56,22 @@ describe('render', () => {
     expect(root.querySelector('.bf-panel-count')?.textContent).toBe('3');
   });
 
-  it('renders a peek-only panel as a static line, not a button', () => {
+  it('renders an accordion that hides nothing as a plain line, not a button', () => {
     const root = renderFlow(parse(['- step', '  > just a note'].join('\n')), options);
-    expect(root.querySelector('.bf-panel-toggle')).toBeNull();
+    expect(root.querySelector('.bf-fold-toggle')).toBeNull();
+    expect(root.querySelector('.bf-fold')).toBeNull();
+    const rows = root.querySelectorAll<HTMLElement>('.bf-node');
+    expect(rows[1].dataset.kind).toBe('fold');
+    expect(rows[1].querySelector('.bf-text')?.textContent).toBe('just a note');
+  });
+
+  it('renders a peek-only accordion inside a body as an annotation', () => {
+    const root = renderFlow(parse(['- step', '  > outer', '    > just a note'].join('\n')), options);
     expect(root.querySelector('.bf-panel-static')?.textContent).toBe('just a note');
   });
 
-  it('opens and closes every panel at once', () => {
-    const root = renderFlow(parse(['- a', '  > p1', '    b1', '- b', '  > p2', '    b2'].join('\n')), options);
+  it('opens and closes every accordion at once', () => {
+    const root = renderFlow(parse(['- a', '  > p1', '    b1', '- b', '> p2', '  b2'].join('\n')), options);
     const bodies = () => Array.from(root.querySelectorAll<HTMLElement>('.bf-panel-body'));
 
     setAllPanels(root, true);
@@ -98,11 +106,11 @@ describe('render', () => {
     const doc = ['- step', '  > build query  @app/services/get_expenses.rb:12', '    body line'].join('\n');
     const root = renderFlow(parse(doc), { ...options, onAnchorClick });
 
-    const link = root.querySelector<HTMLAnchorElement>('.bf-panel-head .bf-anchor')!;
+    const link = root.querySelector<HTMLAnchorElement>('.bf-fold .bf-anchor')!;
     expect(link).not.toBeNull();
     expect(link.href).toBe('vscode://file/root/repo/app/services/get_expenses.rb:12:1');
     expect(link.textContent).toBe('get_expenses.rb:12');
-    expect(root.querySelector('.bf-peek')?.textContent).toBe('build query');
+    expect(root.querySelector('.bf-fold-toggle .bf-text')?.textContent).toBe('build query');
 
     link.click();
     expect(onAnchorClick).toHaveBeenCalledTimes(1);
@@ -111,29 +119,25 @@ describe('render', () => {
       line: 12,
     });
 
-    const toggle = root.querySelector<HTMLButtonElement>('.bf-panel-toggle')!;
+    const toggle = root.querySelector<HTMLButtonElement>('.bf-fold-toggle')!;
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(root.querySelector<HTMLElement>('.bf-panel-body')!.hidden).toBe(true);
+    expect(root.querySelector<HTMLElement>('.bf-fold .bf-panel-body')!.hidden).toBe(true);
   });
 
-  it('links an anchor on a peek-only panel', () => {
+  it('links an anchor on an accordion with nothing inside', () => {
     const root = renderFlow(parse(['- step', '  > see @app/models/expense.rb:41'].join('\n')), options);
-    expect(root.querySelector('.bf-panel-toggle')).toBeNull();
-    expect(root.querySelector<HTMLAnchorElement>('.bf-panel-static .bf-anchor')!.href).toBe(
+    expect(root.querySelector('.bf-fold-toggle')).toBeNull();
+    expect(root.querySelector<HTMLAnchorElement>('.bf-node .bf-anchor')!.href).toBe(
       'vscode://file/root/repo/app/models/expense.rb:41:1',
     );
   });
 
-  it('renders panels and children in the order they were written', () => {
-    const doc = ['- step', '  > first note', '    note body', '  - child', '> second note', '  note body'].join(
-      '\n',
-    );
+  it('renders children in the order they were written', () => {
+    const doc = ['- step', '  > first note', '    note body', '  - child'].join('\n');
     const root = renderFlow(parse(doc), options);
     const own = root.querySelector('.bf-node > .bf-main > .bf-content')!;
-    const order = Array.from(own.children).map((n) =>
-      n.classList.contains('bf-panel') ? n.querySelector('.bf-peek')?.textContent : n.querySelector('.bf-text')?.textContent,
-    );
-    expect(order).toEqual(['first note', 'child', 'second note']);
+    const order = Array.from(own.children).map((n) => n.querySelector('.bf-text')?.textContent);
+    expect(order).toEqual(['first note', 'child']);
   });
 
   it('renders a nested accordion inside the outer body', () => {
@@ -163,11 +167,11 @@ describe('render', () => {
   it('toggles a nested panel without collapsing the outer one', () => {
     const doc = ['- step', '  > outer', '    intro', '    > inner', '      body'].join('\n');
     const root = renderFlow(parse(doc), options);
-    const outerToggle = root.querySelector<HTMLButtonElement>('.bf-panel-toggle')!;
+    const outerToggle = root.querySelector<HTMLButtonElement>('.bf-fold-toggle')!;
     outerToggle.click();
     expect(outerToggle.getAttribute('aria-expanded')).toBe('true');
 
-    const innerToggle = root.querySelectorAll<HTMLButtonElement>('.bf-panel-toggle')[1]!;
+    const innerToggle = root.querySelectorAll<HTMLButtonElement>('.bf-panel-toggle')[0]!;
     innerToggle.click();
     expect(innerToggle.getAttribute('aria-expanded')).toBe('true');
     expect(outerToggle.getAttribute('aria-expanded')).toBe('true');
@@ -194,8 +198,8 @@ describe('render', () => {
   it('shows a note chip on an accordion, not only on nodes', () => {
     const doc = ['- step', '  > SELECT * FROM expenses', '    WHERE user_id = $1', '    # slow at p99'].join('\n');
     const root = renderFlow(parse(doc), options);
-    const panelHead = root.querySelector<HTMLElement>('.bf-panel-head')!;
-    const chip = panelHead.querySelector<HTMLButtonElement>('.bf-note')!;
+    const head = root.querySelector<HTMLElement>('.bf-fold > .bf-main > .bf-panel-head')!;
+    const chip = head.querySelector<HTMLButtonElement>('.bf-note')!;
     expect(chip).not.toBeNull();
     expect(chip.getAttribute('aria-label')).toContain('slow at p99');
   });
@@ -209,9 +213,9 @@ describe('render', () => {
 
   it('puts the note chip before the anchor on an accordion too', () => {
     const doc = ['- step', '  > summarize  @app/services/x.rb:2', '    # about the query', '    SELECT 1'].join('\n');
-    const head = renderFlow(parse(doc), options).querySelector('.bf-panel-head')!;
+    const head = renderFlow(parse(doc), options).querySelector('.bf-fold > .bf-main > .bf-panel-head')!;
     const order = Array.from(head.children).map((n) => n.className.split(' ')[0].replace('bf-', ''));
-    expect(order).toEqual(['panel-toggle', 'note', 'anchor']);
+    expect(order).toEqual(['fold-toggle', 'note', 'anchor']);
   });
 
   it('renders one chip for a multi-line note and shows every line', () => {
@@ -266,5 +270,103 @@ describe('render', () => {
 
   it('shows an empty state', () => {
     expect(renderFlow(parse('# only a comment'), options).querySelector('.bf-empty')).not.toBeNull();
+  });
+});
+
+describe('folds', () => {
+  const foldDoc = ['- gate checks out', '> Charge.create(amount:, source:)   @lib/charge.rb:9', '  # the only irreversible step', '  - 900ms p99', '  - one retry'].join('\n');
+
+  it('renders the line itself as the accordion, in the spine', () => {
+    const root = renderFlow(parse(foldDoc), options);
+
+    const fold = root.querySelector<HTMLElement>('.bf-fold');
+    const toggle = fold?.querySelector<HTMLButtonElement>('.bf-fold-toggle');
+    const body = fold?.querySelector<HTMLElement>('.bf-panel-body');
+
+    expect(fold?.dataset.kind).toBe('fold');
+    // the accordion is a node: marker column, then the line in the text column
+    expect(fold?.querySelector(':scope > .bf-marker .bf-glyph')?.textContent).toBe('>');
+    expect(toggle?.querySelector('.bf-text')?.textContent).toBe('Charge.create(amount:, source:)');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(body?.hidden).toBe(true);
+    expect(body?.textContent).toContain('900ms p99');
+  });
+
+  it('shows how many lines are hidden until it is opened', () => {
+    const root = renderFlow(parse(foldDoc), options);
+    expect(root.querySelector('.bf-fold .bf-panel-count')?.textContent).toBe('2');
+  });
+
+  it('opens and closes on click', () => {
+    const root = renderFlow(parse(foldDoc), options);
+    const fold = root.querySelector<HTMLElement>('.bf-fold')!;
+    const toggle = fold.querySelector<HTMLButtonElement>('.bf-fold-toggle')!;
+    const body = fold.querySelector<HTMLElement>('.bf-panel-body')!;
+
+    toggle.click();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(body.hidden).toBe(false);
+    expect(fold.classList.contains('is-open')).toBe(true);
+
+    toggle.click();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(body.hidden).toBe(true);
+    expect(fold.classList.contains('is-open')).toBe(false);
+  });
+
+  it('puts the note chip before the source anchor on the fold header', () => {
+    const root = renderFlow(parse(foldDoc), options);
+    const head = root.querySelector('.bf-fold > .bf-main > .bf-panel-head')!;
+    const order = Array.from(head.children).map((child) => child.className.split(' ')[0].replace('bf-', ''));
+
+    expect(order).toEqual(['fold-toggle', 'note', 'anchor']);
+  });
+
+  it('opens accordions and nested ones together with expand all', () => {
+    const root = renderFlow(
+      parse(['- a', '  > p1', '    b1', '> fold', '  > nested', '    f1'].join('\n')),
+      options,
+    );
+    const bodies = () => Array.from(root.querySelectorAll<HTMLElement>('.bf-panel-body'));
+
+    setAllPanels(root, true);
+    expect(bodies().every((body) => !body.hidden)).toBe(true);
+
+    setAllPanels(root, false);
+    expect(bodies().every((body) => body.hidden)).toBe(true);
+  });
+
+  it('renders a nested accordion inside a fold body', () => {
+    const doc = ['> fold', '  > nested peek', '    nested body line'].join('\n');
+    const root = renderFlow(parse(doc), options);
+    const fold = root.querySelector<HTMLElement>('.bf-fold')!;
+
+    expect(fold.querySelector('.bf-panel .bf-peek')?.textContent).toBe('nested peek');
+    expect(fold.querySelector('.bf-panel .bf-panel-body')?.textContent).toContain('nested body line');
+  });
+
+  it('renders an accordion that hides nothing as a plain line, with no toggle', () => {
+    const root = renderFlow(parse(['> Deploy::Run.call', '- tail step'].join('\n')), options);
+
+    expect(root.querySelector('.bf-fold')).toBeNull();
+    expect(root.querySelector('.bf-fold-toggle')).toBeNull();
+    const first = root.querySelector<HTMLElement>('.bf-node');
+    expect(first?.dataset.kind).toBe('fold');
+    expect(first?.querySelector('.bf-glyph')?.textContent).toBe('>');
+    expect(first?.querySelector('.bf-text')?.textContent).toBe('Deploy::Run.call');
+  });
+
+  it('renders a `>` with nothing above it as an accordion at the top of the flow', () => {
+    const doc = ['> shell transcript', '  $ ls', '  the only irreversible step'].join('\n');
+    const root = renderFlow(parse(doc), options);
+
+    const fold = root.querySelector<HTMLElement>('.bf-roots > .bf-fold');
+    expect(fold).not.toBeNull();
+    expect(fold?.querySelector('.bf-fold-toggle .bf-text')?.textContent).toBe('shell transcript');
+    expect(fold?.querySelector('.bf-panel-count')?.textContent).toBe('2');
+    expect(root.querySelector('.bf-empty')).toBeNull();
+
+    fold?.querySelector<HTMLButtonElement>('.bf-fold-toggle')?.click();
+    expect(fold?.querySelector<HTMLElement>('.bf-panel-body')?.textContent).toContain('the only irreversible step');
   });
 });

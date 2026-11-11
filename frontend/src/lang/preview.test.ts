@@ -12,7 +12,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { parse } from './parser';
+import { parse, stats } from './parser';
 import type { LNode, ParseResult } from './parser';
 
 const fixtures = fileURLToPath(new URL('../../../testdata/og/', import.meta.url));
@@ -27,43 +27,23 @@ interface Expected {
   firstGate: string;
 }
 
-const STEP_KINDS = new Set<LNode['kind']>(['step', 'failure', 'async', 'return']);
+const STEP_KINDS = new Set<LNode['kind']>(['step', 'failure', 'async', 'return', 'fold']);
 
-function countPanels(panels: LNode['panels']): number {
-  let total = 0;
-  for (const panel of panels) {
-    total += 1;
-    for (const item of panel.body) {
-      if (item.kind === 'panel') total += countPanels([item.panel]);
-    }
-  }
-  return total;
-}
-
-function countNotes(result: ParseResult): number {
-  let total = result.notes.length;
-  for (const node of result.nodes) {
-    total += node.notes.length;
-    for (const panel of node.panels) {
-      total += panel.notes.length;
-      for (const item of panel.body) {
-        if (item.kind === 'panel') total += item.panel.notes.length;
-      }
-    }
-  }
-  return total;
-}
-
-/** The card rules, as the server implements them. */
+/**
+ * The card rules, as the server implements them. The counts come from `stats()`
+ * rather than a copy of it: two implementations of the same arithmetic in one
+ * file is how the nested-note count drifted last time.
+ */
 function derive(result: ParseResult): Expected {
+  const counts = stats(result);
   const gate = result.nodes.find((node) => node.reserved === 'gate');
   const step = result.nodes.find((node) => STEP_KINDS.has(node.kind) && node.text !== '');
 
   return {
-    steps: result.nodes.length,
-    arms: result.nodes.filter((node) => node.kind === 'arm').length,
-    panels: result.nodes.reduce((total, node) => total + countPanels(node.panels), 0),
-    notes: countNotes(result),
+    steps: counts.nodes,
+    arms: counts.arms,
+    panels: counts.panels,
+    notes: counts.notes,
     firstNote: (result.notes[0]?.text ?? '').split('\n')[0].trim(),
     firstStep: step?.text ?? '',
     firstGate: gate?.text ?? '',

@@ -11,12 +11,12 @@ import (
 	"blinkflow/backend/internal/web"
 )
 
-const shareDocument = `# checkout — one gate, one panel
+const shareDocument = `# checkout — one gate, one accordion
 POST v3/checkout
   gate: permission checkout.write
     yes:
-      - Orders::Create.call(cart)   @app/services/orders/create.rb:12
-        > charges the card
+      > Orders::Create.call(cart)   @app/services/orders/create.rb:12
+        charges the card
     no:
       - 403 { error: "forbidden" }
 `
@@ -128,7 +128,7 @@ func TestShareSummarisesTheDocument(t *testing.T) {
 	body := decodeResponse(t, post(t, server, "text/plain", shareDocument))
 
 	for field, want := range map[string]any{
-		"title":        "checkout — one gate, one panel",
+		"title":        "checkout — one gate, one accordion",
 		"description":  "6 steps · 2 arms · 1 panel · 1 note · gate: permission checkout.write",
 		"steps":        float64(6),
 		"arms":         float64(2),

@@ -1,6 +1,5 @@
 import { buildOpenUrl, displayRef, type EditorId } from './anchors';
-import { contentOf } from './parser';
-import type { Anchor, LNode, Note, Panel, ParseResult } from './parser';
+import type { Anchor, LNode, Note, Panel, PanelBodyItem, ParseResult } from './parser';
 
 export interface RenderOptions {
   editor: EditorId;
@@ -16,12 +15,26 @@ const GLYPHS: Record<string, string> = {
   actor: '@',
   gate: '◆',
   arm: '◦',
+  fold: '>',
 };
 
 function el(tag: string, className: string): HTMLElement {
   const node = document.createElement(tag);
   node.className = className;
   return node;
+}
+
+/**
+ * Wire a toggle to the body it opens. `owner` is the element that carries the
+ * open state — a panel box or a fold row — so both accordions open the same way.
+ */
+function bindToggle(toggle: HTMLButtonElement, body: HTMLElement, owner: HTMLElement): void {
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open));
+    body.hidden = open;
+    owner.classList.toggle('is-open', !open);
+  });
 }
 
 export function renderFlow(result: ParseResult, options: RenderOptions): HTMLElement {
@@ -45,6 +58,10 @@ export function renderFlow(result: ParseResult, options: RenderOptions): HTMLEle
 }
 
 function renderNode(node: LNode, options: RenderOptions, isLast: boolean): HTMLElement {
+  if (node.kind === 'fold' && node.fold && node.fold.body.length > 0) {
+    return renderFold(node, options, isLast);
+  }
+
   const wrapper = el('div', 'bf-node');
   wrapper.dataset.kind = node.kind;
   wrapper.dataset.line = String(node.line);
@@ -78,16 +95,11 @@ function renderNode(node: LNode, options: RenderOptions, isLast: boolean): HTMLE
   if (node.anchor) row.appendChild(renderAnchor(node.anchor, options, node));
   main.appendChild(row);
 
-  const items = contentOf(node);
-  if (items.length > 0) {
+  if (node.children.length > 0) {
     const content = el('div', 'bf-content');
     const lastChild = node.children[node.children.length - 1];
-    for (const item of items) {
-      content.appendChild(
-        item.kind === 'panel'
-          ? renderPanel(item.panel, options, node)
-          : renderNode(item.node, options, item.node === lastChild),
-      );
+    for (const child of node.children) {
+      content.appendChild(renderNode(child, options, child === lastChild));
     }
     main.appendChild(content);
   }
@@ -133,33 +145,8 @@ function renderPanel(panel: Panel, options: RenderOptions, node: LNode): HTMLEle
     const body = el('div', 'bf-panel-body');
     body.hidden = true;
 
-    // Text runs render as one block each; a nested panel splits the run, so the
-    // body reads in exactly the order it was written.
-    let run: string[] = [];
-    const flush = (): void => {
-      if (run.length === 0) return;
-      const pre = document.createElement('pre');
-      pre.className = 'bf-pre';
-      pre.textContent = run.join('\n');
-      body.appendChild(pre);
-      run = [];
-    };
-    for (const item of panel.body) {
-      if (item.kind === 'text') {
-        run.push(item.text);
-        continue;
-      }
-      flush();
-      body.appendChild(renderPanel(item.panel, options, node));
-    }
-    flush();
-
-    toggle.addEventListener('click', () => {
-      const open = toggle.getAttribute('aria-expanded') === 'true';
-      toggle.setAttribute('aria-expanded', String(!open));
-      body.hidden = open;
-      box.classList.toggle('is-open', !open);
-    });
+    appendBodyItems(body, panel.body, options, node);
+    bindToggle(toggle, body, box);
 
     head.appendChild(toggle);
     box.append(head, body);
@@ -172,6 +159,84 @@ function renderPanel(panel: Panel, options: RenderOptions, node: LNode): HTMLEle
   if (panel.anchor) head.appendChild(renderAnchor(panel.anchor, options, node));
 
   return box;
+}
+
+/**
+ * Text runs render as one block each; a nested panel splits the run, so the
+ * body reads in exactly the order it was written. Shared by panels and folds.
+ */
+function appendBodyItems(body: HTMLElement, items: PanelBodyItem[], options: RenderOptions, node: LNode): void {
+  let run: string[] = [];
+  const flush = (): void => {
+    if (run.length === 0) return;
+    const pre = document.createElement('pre');
+    pre.className = 'bf-pre';
+    pre.textContent = run.join('\n');
+    body.appendChild(pre);
+    run = [];
+  };
+  for (const item of items) {
+    if (item.kind === 'text') {
+      run.push(item.text);
+      continue;
+    }
+    flush();
+    body.appendChild(renderPanel(item.panel, options, node));
+  }
+  flush();
+}
+
+/**
+ * A fold: the line itself is the accordion. It is drawn as a node — the `>`
+ * marker in the spine, the line in the text column — so an accordion keeps its
+ * place in the tree, and the detail opens underneath it.
+ */
+function renderFold(node: LNode, options: RenderOptions, isLast: boolean): HTMLElement {
+  const wrapper = el('div', 'bf-node bf-fold');
+  wrapper.dataset.kind = 'fold';
+  wrapper.dataset.line = String(node.line);
+  if (isLast) wrapper.classList.add('bf-is-last');
+
+  const marker = el('div', 'bf-marker');
+  marker.setAttribute('aria-hidden', 'true');
+  const glyph = el('span', 'bf-glyph');
+  glyph.textContent = '>';
+  marker.appendChild(glyph);
+
+  const main = el('div', 'bf-main');
+  const row = el('div', 'bf-panel-head');
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'bf-fold-toggle';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.dataset.line = String(node.line);
+
+  const text = el('span', 'bf-text');
+  text.textContent = node.text;
+
+  const count = el('span', 'bf-panel-count');
+  const lines = node.fold!.body.length;
+  count.textContent = String(lines);
+  count.title = `${lines} line${lines === 1 ? '' : 's'} inside`;
+
+  toggle.append(text, count);
+  row.appendChild(toggle);
+
+  // The notes and anchor sit beside the toggle, never inside it: a link nested
+  // in a button is invalid HTML and would swallow the click.
+  for (const note of [...node.notes, ...(node.fold?.notes ?? [])]) row.appendChild(renderNote(note));
+  if (node.anchor) row.appendChild(renderAnchor(node.anchor, options, node));
+  main.appendChild(row);
+
+  const body = el('div', 'bf-panel-body');
+  body.hidden = true;
+  appendBodyItems(body, node.fold!.body, options, node);
+  main.appendChild(body);
+  bindToggle(toggle, body, wrapper);
+
+  wrapper.append(marker, main);
+  return wrapper;
 }
 
 function renderAnchor(anchor: Anchor, options: RenderOptions, node?: LNode): HTMLElement {
@@ -361,9 +426,9 @@ export function closeNoteDialog(): void {
   else noteDialog.removeAttribute('open');
 }
 
-/** Open or close every panel in a rendered flow. */
+/** Open or close every accordion in a rendered flow, nested ones included. */
 export function setAllPanels(root: HTMLElement, open: boolean): void {
-  const toggles = root.querySelectorAll<HTMLButtonElement>('.bf-panel-toggle');
+  const toggles = root.querySelectorAll<HTMLButtonElement>('.bf-fold-toggle, .bf-panel-toggle');
   toggles.forEach((toggle) => {
     const isOpen = toggle.getAttribute('aria-expanded') === 'true';
     if (isOpen !== open) toggle.click();
