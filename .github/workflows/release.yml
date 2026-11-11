@@ -79,8 +79,9 @@ jobs:
 
       - name: Run the image
         env:
-          # A real payload: POST v3/checkout with a gate, an arm and a panel.
-          PAYLOAD: c1.RY1BCsIwEEX3PcWnK13YqHWVhQgeoIJeIJ2MbbA2ZSZWRLy7UBV3H97j_UN1PGEsDbVMl3hLGdC4xBYDyzWohtjjx4q7hMQZADxY7TSABSrxLGrtXtglLsh13YycpDmAnRsGoyxjIFYTJ9PQR5TartbfCrAFtU4aVqSWQU78hPr4P9osSzzBIlEs8nOUOnjPfY5X9gY
+          # A real payload: POST v3/checkout with a gate, two arms and an
+          # accordion whose body hides inside it.
+          PAYLOAD: c1.TI_NaipBEEb3PsWHd6OgM3NjNvYiBHwAA-YF2p4v2mSmu1NVYxhC3j1kzN-uqHPqQD3sD4-4bOpwZnjOg82Akzc6FEofVWNO-GbVq0TjDABGqpsGYI29tBR1bif0xir4rlsEL7YEcO9LqZVyiYFa58msw1WUo_t_81UB7nAwiYXO7c5eTqyu1sL3eUjm8FmsLJvvVtA8SOC0a5c_BeAf7Ezk1I2IIrxQNB47Qo0FMU1U-DJQ7c_VGtum6RVlu11h0ygs9syDrZATITQZJzvl359vmw3eQJEsDvOnLMfYtkxzvM8-BgA
         run: |
           set -euo pipefail
           image="$REGISTRY/$IMAGE:ci"
@@ -106,14 +107,25 @@ jobs:
           # the origin the environment says it lives on.
           curl -fsS "http://127.0.0.1:8080/$PAYLOAD" > /tmp/page.html
           grep -q '<title>POST v3/checkout — Blinkflow</title>' /tmp/page.html
-          grep -q 'og:description" content="6 steps' /tmp/page.html
+          # The shape of the summary, not its numbers: the counts belong to the
+          # countless fixtures under testdata/og, and pinning one here made this
+          # job fail the moment the language counted something differently.
+          grep -qE 'og:description" content="[0-9]+ steps · [0-9]+ arms · [0-9]+ panel' /tmp/page.html
+          grep -q 'gate: permission checkout.write' /tmp/page.html
           grep -q 'canonical" href="https://example.com/c1\.' /tmp/page.html
+
+          # The image carries the skills, and the server serves them: a missing
+          # folder stops the container at startup, so this checks the wiring.
+          curl -fsS http://127.0.0.1:8080/skills/explain-code-flow/SKILL.md \
+            | grep -q '^name: explain-code-flow'
 
           # The encode endpoint: a document in, a link out, no storage.
           encoded="$(printf 'GET v3/expenses\n  - Database.where(user_id:)\n' \
             | curl -fsS -X POST http://127.0.0.1:8080/share \
                 -H 'content-type: text/plain' --data-binary @-)"
-          grep -q '"embedded":"http://example.com/c1\.' <<<"$encoded"
+          # BLINKFLOW_PUBLIC_ORIGIN is https above, so every link it hands back
+          # is https too — this asserted http:// and could never have passed.
+          grep -q '"embedded":"https://example.com/c1\.' <<<"$encoded"
           grep -q '"steps":2' <<<"$encoded"
 
           # Every other route stays read-only.
