@@ -2,7 +2,7 @@
 
 **Understand flows with the blink of an eye.** → [blinkflow.live](https://blinkflow.live)
 
-A tiny text notation for flows — with collapsible detail panels and click-through source anchors.
+A tiny text notation for flows — every line that carries detail is an accordion, with click-through source anchors.
 Written as plain text, rendered as a tree.
 
 You have been here.
@@ -41,11 +41,11 @@ GET v3/expenses
 ```
 
 - `-` step, `!` failure, `~` async, `<` return
-- `>` collapsed detail panel rendered as a badge carrying its own `>`; the peek line stays visible, the body opens on click (a `>` inside a body opens a nested panel)
+- `>` an accordion line: the line is the element and its detail hides inside it — first child, sibling or block of its own; the body opens on click (a `>` inside a body nests)
 - `gate:` / `yes:` / `no:` / `else:` / `err:` are reserved; any other `label:` is a free-form arm (a value match under a gate, a path split without one)
 - trailing `@path:line` opens that file in your editor
 - `# note` attaches to the component above — a line or an accordion — as a note chip: hover for a popup, click for a dialog; consecutive `#` lines are one note
-- indentation is the tree; panels nest, and `\>` escapes a literal `>` inside a body
+- indentation is the tree; accordions nest, and `\>` escapes a literal `>` inside a body
 
 ## Playground
 
@@ -83,7 +83,7 @@ The browser then decodes the same payload again and draws it.
 curl -A "Slackbot" http://localhost:8080/c1.…
   <title>POST v3/checkout — call stack — Blinkflow</title>
   <meta property="og:title" content="POST v3/checkout — call stack" />
-  <meta property="og:description" content="15 steps · 2 arms · 5 panels · 3 notes" />
+  <meta property="og:description" content="15 steps · 1 arms · 4 panels · 3 notes" />
 ```
 
 What the server is not: it stores nothing, logs no document (requests are logged as `c1.<redacted> (769 chars)`), has exactly one endpoint that accepts a body — `POST /share`, which also stores nothing — and is never on the path of *reading* a link.
@@ -169,13 +169,13 @@ curl -sS -X POST https://blinkflow.live/share \
   },
   "payload": "c1.…",
   "title": "v3/expenses — API flow",
-  "description": "6 steps · 2 arms · 1 panel · 1 note · gate: permission expenses.read",
-  "steps": 6,
+  "description": "10 steps · 2 arms · 4 panels · 2 notes · gate: permission expenses.read",
+  "steps": 10,
   "arms": 2,
-  "panels": 1,
-  "notes": 1,
-  "source_bytes": 270,
-  "payload_chars": 262
+  "panels": 4,
+  "notes": 2,
+  "source_bytes": 1242,
+  "payload_chars": 934
 }
 ```
 
@@ -188,12 +188,24 @@ It is a pure function — the same document produces the same link — and it is
 The links it builds are the format the editor builds, which is the point: `share.Encode` is a second implementation of the same format, and a test decodes the server's payload with the app's own decoder.
 Only the version prefix is shared between them, so a format change is a new prefix (`c2.…`) that old clients refuse loudly instead of rendering wrong.
 
+## Skills
+
+`skills/` holds instructions written for AI agents, served from that folder at `/skills/` — the folder is the endpoint, no build step.
+The first one explains code:
+
+```
+https://blinkflow.live/skills/explain-code-flow/SKILL.md
+```
+
+It tells an agent to read the code, draw the flow, post it to `/share`, and answer with the link — never with the document or the code.
+Reference files and three worked examples at three levels of abstraction sit beside it, and a test parses every example so a broken one fails CI instead of reaching an agent.
+
 ## Structure
 
 ```
 frontend/              the app: everything that runs in a browser
   src/lang/parser.ts   text → tree (+ issues)
-  src/lang/render.ts   tree → DOM (panels, anchors)
+  src/lang/render.ts   tree → DOM (accordions, anchors)
   src/lang/share.ts    payload encode/decode, both link carriers
   src/lang/anchors.ts  path resolution, editor deep links
   src/lang/editor.ts   CodeMirror theme + tokenizer
@@ -204,6 +216,7 @@ backend/               the card server (Go, standard library only)
   internal/flow/       counts and first note/gate, mirroring the parser
   internal/og/         the card rules
   internal/web/        routing: payload pages, dev proxy, static files
+skills/                agent skills, served at /skills/
 testdata/og/           fixtures both languages assert against
 .github/workflows/     the two test suites, the image build and its publish to GHCR
 Makefile               dev, test, build, image
