@@ -32,10 +32,11 @@ GET v3/expenses
   gate: permission expenses.read
     yes:
       - Services::GetExpenses.call(user_id)   @app/services/get_expenses.rb:12
-        > AR query builder — clamps per_page, opaque cursor
-        - Database.where(user_id:, cursor:, limit:)
-          > SELECT * FROM expenses
-            WHERE user_id = $1
+        # the AR query builder clamps per_page and keeps the cursor opaque
+        > Database.where(user_id:, cursor:, limit:)
+          SELECT * FROM expenses
+          WHERE user_id = $1
+          LIMIT 25
     no:
       - 403 { error: "forbidden" }
 ```

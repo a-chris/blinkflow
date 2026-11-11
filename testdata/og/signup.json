@@ -1,8 +1,8 @@
 {
-  "steps": 29,
+  "steps": 25,
   "arms": 8,
   "panels": 0,
-  "notes": 1,
+  "notes": 5,
   "firstNote": "Signup — user flow",
   "firstStep": "Landing page /",
   "firstGate": "email already registered"

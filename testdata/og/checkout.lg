@@ -2,13 +2,12 @@
 
 POST v3/checkout   @app/controllers/checkout_controller.rb:18
   - authenticate!
-    > Current.user from the session cookie — 401 when absent
+    # Current.user comes from the session cookie; 401 when absent
   - Checkout::Place.call(cart, user)   @app/services/checkout/place.rb:9
-    # 3 writes in one transaction
+    # 3 writes in one transaction, 6 invariants
     # never call this outside a request
-    > one transaction, 3 writes, 6 invariants
     - validate_cart   @app/services/checkout/place.rb:22
-      > cart non-empty · every item in stock · price snapshot < 15 min old
+      # cart non-empty · every item in stock · price snapshot < 15 min old
       ! EmptyCart
       ! InsufficientStock
     - Order.create!(...)   @app/services/checkout/place.rb:41
@@ -22,6 +21,6 @@ POST v3/checkout   @app/controllers/checkout_controller.rb:18
       err: CardDeclined
         ! PaymentRequired
       err: Timeout
-        > charge stays :pending, the webhook settles it
+        # charge stays :pending, the webhook settles it
         < :pending
     - 201 { order_id: order.id }

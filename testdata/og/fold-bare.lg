@@ -1,8 +1,9 @@
 # Deploy — one build, one rollout
 
-# The shapes a `>` line takes: the element itself (first child of a step, and a
-# block that opens the document), and a line that hides nothing. Both
-# implementations count all of them the same way.
+# The shapes a `>` line takes: the element itself, as the first child of a step
+# and as the block that opens the document. It also pins the fallback — a `>`
+# with nothing under it is a line, not an accordion — so both implementations
+# keep counting it the same way.
 
 > shell transcript
   $ bundle exec rake db:migrate

@@ -1,8 +1,8 @@
 {
-  "steps": 20,
+  "steps": 16,
   "arms": 2,
   "panels": 1,
-  "notes": 3,
+  "notes": 6,
   "firstNote": "POST v3/checkout — call stack",
   "firstStep": "POST v3/checkout",
   "firstGate": ""

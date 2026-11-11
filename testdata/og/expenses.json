@@ -1,7 +1,7 @@
 {
-  "steps": 13,
+  "steps": 12,
   "arms": 2,
-  "panels": 3,
+  "panels": 4,
   "notes": 3,
   "firstNote": "v3/expenses — API flow",
   "firstStep": "GET v3/expenses",
