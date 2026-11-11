@@ -35,13 +35,15 @@ WORKDIR /app
 COPY --from=backend /out/blinkflow /app/blinkflow
 COPY --from=frontend /app/frontend/dist /app/dist
 COPY LICENSE /app/LICENSE
+COPY skills /app/skills
 
 # The defaults the image needs to differ from the developer ones: a container
 # has to listen on its interface rather than loopback, and the site lives where
 # this image put it. Every flag still overrides these; see the README.
 ENV BLINKFLOW_ADDR=0.0.0.0 \
     BLINKFLOW_PORT=8080 \
-    BLINKFLOW_STATIC=/app/dist
+    BLINKFLOW_STATIC=/app/dist \
+    BLINKFLOW_SKILLS=/app/skills
 
 EXPOSE 8080
 USER nonroot:nonroot

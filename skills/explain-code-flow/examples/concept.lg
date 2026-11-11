@@ -1,0 +1,16 @@
+# A new user signs up with company SSO
+# no code: this is what the person and the company see
+
+@person
+open the app
+  gate: already signed in
+    yes:
+      - land on the dashboard
+    no:
+      - choose "Continue with SSO"
+      > the identity provider checks the password, not us
+        we receive an assertion, never a password
+        the email domain decides which company the person joins
+      - create the user on first sight, with the default role
+        # the first person from a new domain becomes that company's admin
+      - land on the dashboard

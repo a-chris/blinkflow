@@ -1,0 +1,21 @@
+# Order fulfilment — the saga
+# services are black boxes here: what the system does, not which class does it
+
+@kafka
+~ consume order.placed
+  gate: stock available for every line
+    yes:
+      - reserve stock for every line item
+      - charge the card
+      > emit order.confirmed
+        group: fulfilment
+        billing → send the invoice
+        shipping → create the parcel
+        analytics → record the order
+    no:
+      > emit order.backordered
+        # nothing is charged; the order is retried when stock lands
+        the customer sees an email, not a failure
+  err:
+    - retry twice, then emit order.failed
+      # after two attempts the order is left for a human; every step is keyed on order_id

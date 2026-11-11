@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"mime"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -36,6 +37,9 @@ type Config struct {
 	ShellPath string
 	// StaticDir is the built site, e.g. frontend/dist. Used outside Dev.
 	StaticDir string
+	// SkillsDir is the folder of agent skills served at /skills/, e.g. skills.
+	// Empty disables the route, which is what unit tests want.
+	SkillsDir string
 	// MaxPayloadBytes caps the decoded document.
 	MaxPayloadBytes int
 	// PublicOrigin, when set, is the origin every generated URL claims, e.g.
@@ -54,10 +58,23 @@ type Config struct {
 type Server struct {
 	config   Config
 	proxy    *httputil.ReverseProxy
+	skills   http.Handler
 	static   http.Handler
 	shell    string
 	titleTag *regexp.Regexp
 	descMeta *regexp.Regexp
+}
+
+// skillsPrefix is where agent skills are mounted.
+const skillsPrefix = "/skills"
+
+func init() {
+	// Two types the skills folder needs and the default table gets wrong: the
+	// examples are plain text (otherwise a fetch downloads a file instead of
+	// showing it) and a skill is markdown, which is how an agent knows to read
+	// it as instructions rather than as prose.
+	_ = mime.AddExtensionType(".lg", "text/plain; charset=utf-8")
+	_ = mime.AddExtensionType(".md", "text/markdown; charset=utf-8")
 }
 
 var (
@@ -87,6 +104,15 @@ func New(config Config) (*Server, error) {
 		shell:    config.StaticDir,
 		titleTag: titleTagPattern,
 		descMeta: descMetaPattern,
+	}
+
+	if config.SkillsDir != "" {
+		if _, err := os.Stat(config.SkillsDir); err != nil {
+			return nil, fmt.Errorf("skills dir %s: %w", config.SkillsDir, err)
+		}
+		// http.Dir cleans every path against its own root, so a request cannot
+		// climb out of the folder it was given.
+		server.skills = http.StripPrefix("/skills/", http.FileServer(http.Dir(config.SkillsDir)))
 	}
 
 	if config.Dev {
@@ -145,6 +171,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if segment := lastSegment(r.URL.Path); share.IsPayload(segment) {
 		s.serveDocument(w, r, segment)
+		return
+	}
+
+	// Agent skills are files, not payloads, and they are served before the dev
+	// proxy: an agent fetching /skills/… gets the document, not Vite's 404.
+	if s.skills != nil && (r.URL.Path == skillsPrefix || strings.HasPrefix(r.URL.Path, skillsPrefix+"/")) {
+		if r.URL.Path == skillsPrefix {
+			http.Redirect(w, r, skillsPrefix+"/", http.StatusMovedPermanently)
+			return
+		}
+		s.skills.ServeHTTP(w, r)
 		return
 	}
 

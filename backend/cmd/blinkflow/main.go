@@ -41,6 +41,7 @@ func main() {
 		proxy      = flag.String("proxy", "http://localhost:5174", "Vite dev server address (dev only)")
 		shell      = flag.String("shell", "../frontend/index.html", "app shell served in dev")
 		static     = flag.String("static", envString("BLINKFLOW_STATIC", "../frontend/dist"), "built site served outside dev")
+		skillsDir  = flag.String("skills", envString("BLINKFLOW_SKILLS", "../skills"), "agent skills served at /skills/; empty disables it")
 		maxPayload = flag.Int("max-payload", envInt("BLINKFLOW_MAX_PAYLOAD", 64<<10), "largest decoded document, in bytes")
 		publicURL  = flag.String("public-origin", envString("BLINKFLOW_PUBLIC_ORIGIN", ""), "origin every generated URL claims, e.g. https://blinkflow.example.com")
 		trustProxy = flag.Bool("trust-proxy", envBool("BLINKFLOW_TRUST_PROXY", false), "believe X-Forwarded-Proto/-Host; only behind a proxy you control")
@@ -51,6 +52,7 @@ func main() {
 		Dev:             *dev,
 		ShellPath:       *shell,
 		StaticDir:       *static,
+		SkillsDir:       *skillsDir,
 		MaxPayloadBytes: *maxPayload,
 		PublicOrigin:    *publicURL,
 		TrustProxy:      *trustProxy,

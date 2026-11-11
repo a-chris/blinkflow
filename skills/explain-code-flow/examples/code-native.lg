@@ -1,0 +1,28 @@
+# Checkout — one charge, one order
+# the happy path, and the two ways it fails; every call is a real one
+
+@user
+POST v3/checkout
+  gate: authenticated
+    no:
+      - 401 { error: "unauthenticated" }
+    yes:
+      > Checkout::Place.call(cart_id, user)   @app/services/checkout/place.rb:14
+        # one transaction: the order exists only if all three writes land
+        - three writes, all or nothing
+        - Order.create!(status: "pending")
+        - LineItem.bulk_insert(cart.items)
+        - Stock.reserve!(cart.items)
+      > Stripe::Charge.create(amount:, source:)   @lib/stripe/charge.rb:9
+        # the only irreversible step: a retry has to reuse the idempotency key
+        - 900ms p99, 30s timeout, one retry
+        - idempotency_key: order.id
+      - Database.update(order, status: "confirmed")   @app/services/checkout/place.rb:41
+      > Events.produce("checkout.placed", order.id)   @app/services/events/publish.rb:7
+        ~ consumed by Billing and Fulfilment
+        - topic: checkout.placed
+        - key: order.id
+      < 201 { id:, status: "confirmed" }
+  err:
+    - CardDeclined → 402 { error: "card_declined" }
+      # stock is released before the response; the order stays pending for 30m
