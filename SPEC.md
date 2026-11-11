@@ -2,6 +2,9 @@
 
 *A light diagram language: the file is already most of the picture.*
 
+The rules behind the syntax — one operator, one job — live in
+[VISION.md](./VISION.md). This file is the spelling; that file is the reason.
+
 Blinkflow is a text notation for flows — API paths, call stacks, user journeys —
 where **indentation is the only geometry**. You write a spine of lines, add a
 `>` for anything you want to expand later, and the renderer turns it into a
@@ -92,8 +95,7 @@ note on the accordion, anything else is raw text.
 
 - A `>` is a **component wherever it is written**. Its indent decides where it
   sits in the tree, exactly like any other line: it can open a document, be the
-  first child of a step, or be one more line in a sibling group. It never
-  becomes an aside hanging off a shallower line.
+  first child of a step, or be one more line in a sibling group.
 - The line renders even when the accordion is closed, so a closed accordion
   still says what is inside.
 - The line can carry its own source anchor (`> built by \`build_query\`
@@ -111,11 +113,12 @@ note on the accordion, anything else is raw text.
       the webhook is the source of truth, not this response
   ```
 
-- A `>` with nothing under it has nothing to open: it is drawn as a plain line
-  with the `>` marker, and counts as a step only.
-
-Inside a body, `>` nests an accordion inside that body, and a body accordion with
-no detail of its own is drawn as an annotation (`↳`).
+- A `>` with nothing indented under it opens nothing, so it is drawn as a plain
+  line: at the top of a document with its `>` marker in the spine, counting as a
+  step, and inside a body as body text. A marker with nothing to do stays an
+  ordinary line — the [fallback rule](./VISION.md#one-operator-one-job) — and the
+  parser says so once, as a hint.
+- Inside a body, `>` nests an accordion inside that body.
 
 ### Writing one
 

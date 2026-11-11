@@ -33,7 +33,7 @@ A line that starts with `>` is an accordion: the line is the element, and its de
   LIMIT 25
 ```
 
-A `>` is a component wherever you write it — opening a document, as the first child of a step, or as one more line in a sibling group. Its indent decides where it sits, exactly like any other line. It is never an aside hanging off the line above.
+A `>` is a component wherever you write it — opening a document, as the first child of a step, or as one more line in a sibling group. Its indent decides where it sits, exactly like any other line.
 
 ```
 gate: authenticated
@@ -64,8 +64,8 @@ A document can open with one, which is how a block that is not a step in the cod
       the webhook is the source of truth, not this response
   ```
 
-- A `>` inside a body nests an accordion inside that body; with no detail of its own it is drawn as an annotation.
-- A `>` with nothing under it has nothing to open: it is drawn as a plain line.
+- A `>` inside a body nests an accordion inside that body.
+- A `>` with nothing indented under it opens nothing, so it is drawn as a plain line (at a depth inside a body, as body text).
 - In a body, a line starting with `>` is structure: write `\>` for a literal, `\#` for a literal `#`.
 
 ### Accordion or plain line?

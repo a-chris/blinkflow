@@ -220,6 +220,8 @@ skills/                agent skills, served at /skills/
 testdata/og/           fixtures both languages assert against
 .github/workflows/     the two test suites, the image build and its publish to GHCR
 Makefile               dev, test, build, image
+VISION.md              what the notation is for, and what an operator may mean
+AGENTS.md              how to work in here, for an agent (or a person in a hurry)
 ```
 
 No framework: the renderer builds DOM directly, which keeps the language portable if you later want a CLI, a markdown plugin, or a static-site renderer.
