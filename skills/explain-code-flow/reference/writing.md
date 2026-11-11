@@ -23,7 +23,7 @@ Mixing levels inside one document is fine. A spine that changes level halfway is
 | the charge | timeout, retry, idempotency key |
 | the failure | exception class, status map |
 
-The `>` line is read while collapsed, so it carries the thing itself — the call, the command, the block — never a label: `> Charge.create(amount:, source:)` beats `> what it does`.
+The `>` line is read while collapsed, so it carries the thing itself — the call, the command, the block — never a label: `> Charge.create(amount:, source:)` beats `> what it does`. What it hides goes under it, indented one level, as plain text.
 
 ## Notes carry the reason
 

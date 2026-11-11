@@ -65,7 +65,6 @@ A document can open with one, which is how a block that is not a step in the cod
   ```
 
 - A `>` inside a body nests an accordion inside that body.
-- A `>` with nothing indented under it opens nothing, so it is drawn as a plain line (at a depth inside a body, as body text).
 - In a body, a line starting with `>` is structure: write `\>` for a literal, `\#` for a literal `#`.
 
 ### Accordion or plain line?
@@ -90,7 +89,7 @@ A trailing `@path[:line[:col]]` links the node. The path must contain `/` or `.`
 
 - **steps** — every node line: steps, actors (`@user`), arms (`gate:`, `yes:`), `!`, `~`, `<`, and every `>` line. Arms are also counted in `arms`.
 - **arms** — lines with a `label:`.
-- **panels** — `>` openers, nested ones included, unless the line hides nothing. Body text is never counted.
+- **panels** — `>` openers, nested ones included. Body text is never counted.
 - **notes** — `#` notes; consecutive lines are one.
 
 ## Validation

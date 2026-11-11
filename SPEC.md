@@ -113,11 +113,6 @@ note on the accordion, anything else is raw text.
       the webhook is the source of truth, not this response
   ```
 
-- A `>` with nothing indented under it opens nothing, so it is drawn as a plain
-  line: at the top of a document with its `>` marker in the spine, counting as a
-  step, and inside a body as body text. A marker with nothing to do stays an
-  ordinary line — the [fallback rule](./VISION.md#one-operator-one-job) — and the
-  parser says so once, as a hint.
 - Inside a body, `>` nests an accordion inside that body.
 
 ### Writing one
