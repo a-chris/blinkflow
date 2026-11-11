@@ -155,11 +155,21 @@ func TestAnalyzeEdgeCases(t *testing.T) {
 			},
 		},
 		{
-			name:   "a fold counts as a step and a panel",
+			// `> nested peek` opens nothing, so it is the last line of the body
+			// rather than a panel — the parser draws it as text.
+			name:   "a fold counts as a step and a panel, a bare nested `>` as neither",
 			source: "- a\n> Jev::Client.classify(state:)\n  - one fact\n  > nested peek\n",
 			want: flow.Analysis{
-				Stats:     flow.Stats{Steps: 2, Panels: 2},
+				Stats:     flow.Stats{Steps: 2, Panels: 1},
 				FirstStep: "a",
+			},
+		},
+		{
+			name:   "a nested `>` with a body counts as a panel",
+			source: "> outer\n  - fact\n  > nested\n    - detail\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 1, Panels: 2},
+				FirstStep: "outer",
 			},
 		},
 		{

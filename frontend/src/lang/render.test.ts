@@ -65,9 +65,23 @@ describe('render', () => {
     expect(rows[1].querySelector('.bf-text')?.textContent).toBe('just a note');
   });
 
-  it('renders a peek-only accordion inside a body as an annotation', () => {
-    const root = renderFlow(parse(['- step', '  > outer', '    > just a note'].join('\n')), options);
-    expect(root.querySelector('.bf-panel-static')?.textContent).toBe('just a note');
+  it('renders a `>` that hides nothing inside a body as body text, not an annotation', () => {
+    const doc = ['> outer', '  - a fact', '  > a bare opener'].join('\n');
+    const root = renderFlow(parse(doc), options);
+
+    // The bare `>` is a line of the body, so it reads as text: no nested panel,
+    // no ↳, nothing pretending to describe the line above it.
+    expect(root.querySelectorAll('.bf-panel')).toHaveLength(0);
+    expect(root.querySelector('.bf-fold .bf-panel-body .bf-pre')?.textContent).toBe('- a fact\na bare opener');
+  });
+
+  it('keeps a note written under a `>` that hides nothing as a note chip', () => {
+    const doc = ['> outer', '  - a fact', '  > a bare opener', '    # still worth saying'].join('\n');
+    const root = renderFlow(parse(doc), options);
+
+    expect(root.querySelectorAll('.bf-panel')).toHaveLength(0);
+    expect(root.querySelector('.bf-note')).not.toBeNull();
+    expect(root.querySelector('.bf-fold .bf-panel-body .bf-pre')?.textContent).toBe('- a fact\na bare opener');
   });
 
   it('opens and closes every accordion at once', () => {

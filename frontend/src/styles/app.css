@@ -721,32 +721,6 @@ body.is-dragging {
   overflow-wrap: anywhere;
 }
 
-/* a `>` with no body is an annotation, not a closed accordion */
-.bf-panel.bf-panel-static {
-  margin: 1px 0 5px;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  align-self: flex-start;
-  max-width: 100%;
-  padding-left: 2px;
-  color: var(--text-faint);
-  font-size: 11.5px;
-  font-style: italic;
-}
-
-.bf-panel.bf-panel-static .bf-peek {
-  color: var(--text-faint);
-  font-style: italic;
-  font-size: 11.5px;
-}
-
-.bf-panel.bf-panel-static::before {
-  content: "↳";
-  font-style: normal;
-  opacity: 0.6;
-}
-
 /* ---------- notes ---------- */
 
 .bf-note {

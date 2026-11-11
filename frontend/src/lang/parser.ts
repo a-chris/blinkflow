@@ -295,6 +295,7 @@ function buildPanel(
   start: number,
   end: number,
   line: number,
+  report: (line: number, message: string) => void,
 ): Panel {
   const slice = raw.slice(start, end);
   const filled = slice.filter((l) => l.raw.trim() !== '');
@@ -338,9 +339,26 @@ function buildPanel(
     if (text.startsWith('>')) {
       const { text: nestedPeek, anchor: nestedAnchor } = extractAnchor(text.slice(1).trim());
       const nestedEnd = boundOf(raw, index + 1, current.indent);
-      const nestedPanel = buildPanel(nestedPeek, nestedAnchor, raw, index + 1, nestedEnd, current.line);
-      items.push({ kind: 'panel', panel: nestedPanel, line: current.line });
-      components.push({ indent: current.indent, notes: nestedPanel.notes });
+      const nestedPanel = buildPanel(
+        nestedPeek,
+        nestedAnchor,
+        raw,
+        index + 1,
+        nestedEnd,
+        current.line,
+        report,
+      );
+      if (nestedPanel.body.length === 0) {
+        // Nothing to open, so `>` is not doing its one job here: the line falls
+        // back to what it says, reads as body text, and its notes belong to the
+        // body it sits in. It never becomes an annotation on the line above.
+        items.push({ kind: 'text', text: nestedPeek, line: current.line });
+        ownNotes.push(...nestedPanel.notes);
+        report(current.line, EMPTY_ACCORDION_HINT);
+      } else {
+        items.push({ kind: 'panel', panel: nestedPanel, line: current.line });
+        components.push({ indent: current.indent, notes: nestedPanel.notes });
+      }
       index = nestedEnd;
       continue;
     }
@@ -357,6 +375,10 @@ function buildPanel(
   if (anchor) panel.anchor = anchor;
   return panel;
 }
+
+/** What a `>` says when there is nothing indented under it to open. */
+const EMPTY_ACCORDION_HINT =
+  '`>` with nothing indented under it opens nothing — write its body, or drop the marker';
 
 /** Chain of `#` lines that are merging into a single note. */
 interface NoteChain {
@@ -406,6 +428,13 @@ export function parse(source: string): ParseResult {
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const hinted = new Set<string>();
 
+  /** Record a hint once per document: the same mistake twice is the same hint. */
+  const report = (line: number, message: string): void => {
+    if (hinted.has(message)) return;
+    hinted.add(message);
+    issues.push({ line, message, severity: 'hint' });
+  };
+
   /** Append one fold node: the `>` is the accordion, the deeper lines hide in it. */
   let index = 0;
   const appendFold = (
@@ -415,7 +444,7 @@ export function parse(source: string): ParseResult {
     indent: number,
     lineNo: number,
   ): void => {
-    const fold = buildPanel('', undefined, raw, 0, raw.length, lineNo);
+    const fold = buildPanel('', undefined, raw, 0, raw.length, lineNo, report);
     const node: LNode = {
       kind: 'fold',
       text: peek,
@@ -433,7 +462,10 @@ export function parse(source: string): ParseResult {
     // A fold with nothing under it has nothing to open: it is just a step, and
     // the notes written in the (empty) body are all it owns.
     if (fold.body.length > 0) node.fold = fold;
-    else node.notes.push(...fold.notes);
+    else {
+      node.notes.push(...fold.notes);
+      report(lineNo, EMPTY_ACCORDION_HINT);
+    }
     if (parent) parent.children.push(node);
     else roots.push(node);
     nodes.push(node);

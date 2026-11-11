@@ -1,7 +1,7 @@
 {
   "steps": 7,
   "arms": 1,
-  "panels": 4,
+  "panels": 3,
   "notes": 3,
   "firstNote": "Deploy — one build, one rollout",
   "firstStep": "shell transcript",

@@ -320,9 +320,11 @@ describe('nested panels', () => {
     expect(bodyOf(parse(doc).nodes[1].fold!)).toEqual(['> not a panel']);
   });
 
-  it('counts nested panels in the stats', () => {
+  it('counts a panel only where the accordion has a body', () => {
+    // `> three` opens nothing, so it is body text and not a panel — the same
+    // count the server's analyzer reaches for the preview card.
     const doc = ['- step', '  > one', '    > two', '      > three'].join('\n');
-    expect(stats(parse(doc)).panels).toBe(3);
+    expect(stats(parse(doc)).panels).toBe(2);
   });
 });
 
@@ -435,18 +437,21 @@ describe('source order', () => {
     expect(result.issues[0].severity).toBe('hint');
   });
 
-  it('is a step and nothing more when a fold hides nothing', () => {
+  it('is a plain line, with one hint, when a fold hides nothing', () => {
     const doc = ['> Deploy::Run.call', '- tail step'].join('\n');
     const result = parse(doc);
 
-    expect(result.issues).toEqual([]);
+    // The `>` is not doing its job, so the line is just a line — and the hint
+    // says so, once, instead of the render inventing a role for it.
+    expect(result.issues.map((issue) => issue.severity)).toEqual(['hint']);
+    expect(result.issues[0].message).toContain('opens nothing');
     expect(result.nodes.map((n) => n.kind)).toEqual(['fold', 'step']);
     // Nothing to open, so there is no accordion and no panel to count.
     expect(result.nodes[0].fold).toBeUndefined();
     expect(stats(result).panels).toBe(0);
   });
 
-  it('is a step and nothing more when a sibling-indent `>` hides nothing', () => {
+  it('is a plain line when a sibling-indent `>` hides nothing', () => {
     const doc = ['- step one', '> just a note, no body', '- step two'].join('\n');
     const result = parse(doc);
 
@@ -454,6 +459,45 @@ describe('source order', () => {
     expect(result.nodes[1].text).toBe('just a note, no body');
     expect(result.nodes[1].fold).toBeUndefined();
     expect(stats(result).panels).toBe(0);
+  });
+
+  it('treats a `>` that hides nothing inside a body as body text', () => {
+    const doc = ['> outer', '  - first fact', '  > a stray opener', '  - second fact'].join('\n');
+    const result = parse(doc);
+    const body = result.nodes[0].fold!.body;
+
+    // Not a panel: nothing to open, so it is the line it says it is.
+    // Body text is raw, so the `-` lines keep theirs; the `>` was a marker, and
+    // markers live in the marker column, so the text reads without it.
+    expect(body.map((item) => (item.kind === 'text' ? item.text : '<panel>'))).toEqual([
+      '- first fact',
+      'a stray opener',
+      '- second fact',
+    ]);
+    expect(stats(result).panels).toBe(1);
+    expect(result.issues.map((issue) => issue.message)).toEqual([
+      expect.stringContaining('opens nothing'),
+    ]);
+  });
+
+  it('keeps the notes of a `>` that hides nothing', () => {
+    const doc = ['> outer', '  - first fact', '  > a stray opener', '    # still worth saying'].join('\n');
+    const result = parse(doc);
+    const fold = result.nodes[0].fold!;
+
+    // The note is not lost: it belongs to the accordion the line sits in.
+    expect(fold.body.map((item) => (item.kind === 'text' ? item.text : '<panel>'))).toEqual([
+      '- first fact',
+      'a stray opener',
+    ]);
+    expect(fold.notes.map((note) => note.text)).toEqual(['still worth saying']);
+    expect(stats(result).notes).toBe(1);
+  });
+
+  it('reports the empty-accordion hint once per document', () => {
+    const doc = ['> one with no body', '> another with no body'].join('\n');
+    const hints = parse(doc).issues.filter((issue) => issue.severity === 'hint');
+    expect(hints).toHaveLength(1);
   });
 
   it('adds a fold at a sibling’s indent to that sibling group', () => {

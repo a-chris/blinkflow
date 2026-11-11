@@ -220,10 +220,9 @@ func (a *analyzer) scanPanelBody(body []rawLine, own *tally) {
 		if isAccordionLine(line.text) {
 			nested, next := collectBody(body, index, line.indent)
 			index = next
-			a.Panels++
-			panel := a.newTally()
-			a.scanPanelBody(nested, panel)
-			components = append(components, component{indent: line.indent, tally: panel})
+			// Same rule as at the top of the document: an opener with nothing
+			// inside it opens nothing, so it is not a panel.
+			components = append(components, component{indent: line.indent, tally: a.accordionBody(nested)})
 		}
 	}
 }

@@ -118,39 +118,35 @@ function renderPanel(panel: Panel, options: RenderOptions, node: LNode): HTMLEle
   const box = el('div', 'bf-panel');
   const head = el('div', 'bf-panel-head');
 
-  if (panel.body.length === 0) {
-    // A peek with no body has nothing to open: render it as an annotation.
-    box.classList.add('bf-panel-static');
-    head.appendChild(peekSpan(panel));
-    box.appendChild(head);
-  } else {
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'bf-panel-toggle';
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.dataset.line = String(panel.line);
+  // A panel always has a body: the parser turns a `>` with nothing inside it
+  // into body text, so there is no such thing as a panel without something to
+  // open, and nothing here has to invent a look for one.
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'bf-panel-toggle';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.dataset.line = String(panel.line);
 
-    // The badge shows the language's own operator: `>` in the source is `>`
-    // in the render, rotated a quarter turn once the body is open.
-    const glyph = el('span', 'bf-panel-glyph');
-    glyph.textContent = '>';
-    glyph.setAttribute('aria-hidden', 'true');
+  // The badge shows the language's own operator: `>` in the source is `>`
+  // in the render, rotated a quarter turn once the body is open.
+  const glyph = el('span', 'bf-panel-glyph');
+  glyph.textContent = '>';
+  glyph.setAttribute('aria-hidden', 'true');
 
-    const count = el('span', 'bf-panel-count');
-    count.textContent = String(panel.body.length);
-    count.title = `${panel.body.length} line${panel.body.length === 1 ? '' : 's'} inside`;
+  const count = el('span', 'bf-panel-count');
+  count.textContent = String(panel.body.length);
+  count.title = `${panel.body.length} line${panel.body.length === 1 ? '' : 's'} inside`;
 
-    toggle.append(glyph, peekSpan(panel), count);
+  toggle.append(glyph, peekSpan(panel), count);
 
-    const body = el('div', 'bf-panel-body');
-    body.hidden = true;
+  const body = el('div', 'bf-panel-body');
+  body.hidden = true;
 
-    appendBodyItems(body, panel.body, options, node);
-    bindToggle(toggle, body, box);
+  appendBodyItems(body, panel.body, options, node);
+  bindToggle(toggle, body, box);
 
-    head.appendChild(toggle);
-    box.append(head, body);
-  }
+  head.appendChild(toggle);
+  box.append(head, body);
 
   // The notes and anchor live beside the toggle, not inside it: nesting a link
   // in a button would make it invalid HTML and swallow the click. Notes come
