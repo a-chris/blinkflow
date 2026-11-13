@@ -84,7 +84,7 @@ make build      # typecheck, build the site, build the server
 | left | CodeMirror editor with Blinkflow highlighting |
 | right | live diagram: click the `>` badge for detail, `↗` to jump to source |
 
-Toolbar: **sample** (three worked examples), **open in** (VS Code, Cursor, Zed, Sublime, `file://`), **base** (the directory anchors are resolved against), **expand all** / **collapse all**, and **share**.
+Toolbar: **sample** (three worked examples), **open in** (VS Code, Cursor, Zed, Sublime, `file://`), **base** (the directory anchors are resolved against), **expand all** / **collapse all**, and **share**. The GitHub mark in the corner opens the repository in a new tab, so a visitor who arrived on someone else's link can find the source it was drawn with.
 
 **Tab** indents the current line or every selected line by one level (2 spaces), **Shift-Tab** outdents. Indentation is inserted as spaces, never a literal tab, because the parser rejects tabs: depth is the structure, so the two must agree.
 

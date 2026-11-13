@@ -167,6 +167,35 @@ button:active {
   transform: translateY(0.5px);
 }
 
+/* The one control that leaves the app: same chrome as a button, no label, so
+   the corner stays quiet — the title and aria-label carry what it does. */
+.icon-link {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.icon-link:hover {
+  background: #182231;
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.icon-link:focus-visible {
+  outline: 2px solid rgba(126, 231, 135, 0.6);
+  outline-offset: 2px;
+}
+
+.icon-link svg {
+  display: block;
+}
+
 .split {
   --left: 46%;
   flex: 1;
