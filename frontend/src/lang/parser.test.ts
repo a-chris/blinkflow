@@ -131,6 +131,11 @@ describe('markers', () => {
     const result = parse('\t- step');
     expect(result.issues.some((i) => i.severity === 'error' && /tab/.test(i.message))).toBe(true);
   });
+
+  it('lets a lone CR separate lines, the way the card side reads it', () => {
+    const result = parse('- a\r- b\r');
+    expect(result.nodes.map((n) => n.text)).toEqual(['a', 'b']);
+  });
 });
 
 describe('arms', () => {
