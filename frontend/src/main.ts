@@ -187,12 +187,16 @@ function labelFor(id: EditorId): string {
   return EDITORS.find((editor) => editor.id === id)?.label ?? id;
 }
 
+function count(value: number, word: string): string {
+  return `${value} ${word}${value === 1 ? '' : 's'}`;
+}
+
 function flowSummary(result: ParseResult): string {
   const s = stats(result);
-  const parts = [`${s.nodes} nodes`, `${s.arms} arms`, `${s.panels} panels`];
-  if (s.notes > 0) parts.push(`${s.notes} note${s.notes === 1 ? '' : 's'}`);
-  if (s.errors > 0) parts.push(`${s.errors} error${s.errors === 1 ? '' : 's'}`);
-  if (s.hints > 0) parts.push(`${s.hints} hint${s.hints === 1 ? '' : 's'}`);
+  const parts = [count(s.nodes, 'node'), count(s.arms, 'arm'), count(s.panels, 'panel')];
+  if (s.notes > 0) parts.push(count(s.notes, 'note'));
+  if (s.errors > 0) parts.push(count(s.errors, 'error'));
+  if (s.hints > 0) parts.push(count(s.hints, 'hint'));
   return parts.join(' · ');
 }
 
