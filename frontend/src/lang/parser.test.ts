@@ -564,6 +564,32 @@ describe('anchors', () => {
     expect(node.anchor).toBeUndefined();
     expect(node.text).toBe('deploy @bin/release:abc');
   });
+
+  it('keeps a four-part suffix in the text, the way the card side reads it', () => {
+    const node = parse('- open it @app/x.go:1:2:3').nodes[0];
+    expect(node.anchor).toBeUndefined();
+    expect(node.text).toBe('open it @app/x.go:1:2:3');
+  });
+
+  it('keeps a scientific line in the text', () => {
+    const node = parse('- open it @app/x.go:1e5').nodes[0];
+    expect(node.anchor).toBeUndefined();
+    expect(node.text).toBe('open it @app/x.go:1e5');
+  });
+
+  it('keeps a line number beyond the Go side’s int64 in the text', () => {
+    const node = parse('- open it @app/x.go:99999999999999999999').nodes[0];
+    expect(node.anchor).toBeUndefined();
+    expect(node.text).toBe('open it @app/x.go:99999999999999999999');
+  });
+
+  it('accepts the largest line number the Go side reads', () => {
+    // 2^63-1 rounds to 2^63 in a double; only the accept/reject decision has
+    // to match strconv.Atoi, not the stored precision.
+    const node = parse('- open it @app/x.go:9223372036854775807').nodes[0];
+    expect(node.anchor?.path).toBe('app/x.go');
+    expect(node.anchor?.line).toBe(9223372036854775808);
+  });
 });
 
 describe('errors', () => {

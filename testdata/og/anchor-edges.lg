@@ -1,0 +1,9 @@
+# Anchors — what the card keeps and what it drops
+# The card shows the first step, so the case that decides whether the two
+# implementations agree is written first: a suffix the parser refuses stays in
+# the text the card shows, and the Go side has to refuse it too.
+
+- four parts stay text @app/x.go:1:2:3
+- a scientific line is no line number @app/x.go:1e5
+- the controller opens at 18:4 @app/controllers/checkout_controller.rb:18:4
+- a bare actor is not an anchor @user

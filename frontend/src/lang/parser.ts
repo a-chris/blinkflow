@@ -227,6 +227,19 @@ function classify(body: string): Classified {
   return { kind: 'step', text: body, marker: '-' };
 }
 
+/**
+ * One optional anchor part, read the way the Go analyser reads it:
+ * strconv.Atoi — optional sign, digits, the int64 range. `''` is the absent
+ * part, so `@a/b:1:` keeps its line and drops no column.
+ */
+function parseAnchorPart(part: string | undefined): { ok: boolean; value?: number } {
+  if (part === undefined || part === '') return { ok: true };
+  if (!/^[+-]?\d+$/.test(part)) return { ok: false };
+  const digits = part.charAt(0) === '+' || part.charAt(0) === '-' ? part.slice(1) : part;
+  if (digits.length > 19 || (digits.length === 19 && digits > '9223372036854775807')) return { ok: false };
+  return { ok: true, value: Number(part) };
+}
+
 function extractAnchor(text: string): { text: string; anchor?: Anchor } {
   const match = ANCHOR_TAIL.exec(text);
   if (!match) return { text };
@@ -235,17 +248,19 @@ function extractAnchor(text: string): { text: string; anchor?: Anchor } {
   // `@user` is an actor, not a path: anchors have a slash or a dot in them.
   if (!/[./]/.test(payload)) return { text };
 
-  const [path, lineRaw, columnRaw] = payload.split(':');
-  if (!path) return { text };
+  // An anchor is `path[:line[:col]]` — no more than three parts, and every
+  // optional part a number the Go analyser would read the same way. Anything
+  // else is not an anchor, and the suffix stays in the text on both sides.
+  const parts = payload.split(':');
+  if (parts.length > 3 || parts[0] === '') return { text };
 
-  const line = lineRaw ? Number(lineRaw) : undefined;
-  const column = columnRaw ? Number(columnRaw) : undefined;
-  if (line !== undefined && !Number.isFinite(line)) return { text };
-  if (column !== undefined && !Number.isFinite(column)) return { text };
+  const line = parseAnchorPart(parts[1]);
+  const column = parseAnchorPart(parts[2]);
+  if (!line.ok || !column.ok) return { text };
 
-  const anchor: Anchor = { path };
-  if (line !== undefined) anchor.line = line;
-  if (column !== undefined) anchor.column = column;
+  const anchor: Anchor = { path: parts[0] };
+  if (line.value !== undefined) anchor.line = line.value;
+  if (column.value !== undefined) anchor.column = column.value;
 
   const kept = text.slice(0, match.index).trimEnd();
   return { text: kept, anchor };

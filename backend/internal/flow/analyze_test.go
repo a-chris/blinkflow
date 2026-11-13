@@ -197,6 +197,38 @@ func TestAnalyzeEdgeCases(t *testing.T) {
 			},
 		},
 		{
+			name:   "a four-part anchor stays part of the line",
+			source: "- open it @app/x.go:1:2:3\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 1},
+				FirstStep: "open it @app/x.go:1:2:3",
+			},
+		},
+		{
+			name:   "a scientific line is not a number",
+			source: "- open it @app/x.go:1e5\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 1},
+				FirstStep: "open it @app/x.go:1e5",
+			},
+		},
+		{
+			name:   "a line number beyond int64 stays part of the line",
+			source: "- open it @app/x.go:99999999999999999999\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 1},
+				FirstStep: "open it @app/x.go:99999999999999999999",
+			},
+		},
+		{
+			name:   "the largest int64 line is still a number",
+			source: "- open it @app/x.go:9223372036854775807\n",
+			want: flow.Analysis{
+				Stats:     flow.Stats{Steps: 1},
+				FirstStep: "open it",
+			},
+		},
+		{
 			name:   "a lone CR separates lines",
 			source: "- a\r- b\r",
 			want: flow.Analysis{
