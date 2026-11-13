@@ -5,8 +5,6 @@ export interface Sample {
 }
 
 const expenses = `# v3/expenses — API flow
-# a > line is an element with its detail inside it: click it to open
-# an anchor jumps to source
 
 @user
 GET v3/expenses
@@ -21,17 +19,19 @@ GET v3/expenses
           WHERE user_id = $1
           ORDER BY created_at DESC, id DESC
           LIMIT 25
-          -- index: expenses_user_id_created_at_idx  ~1.2ms p50
-          > keyset, not OFFSET
-            OFFSET drifts when rows land mid-scan: page 2 would repeat a row
-            the cursor is (created_at, id), so page 2 starts exactly after
-            page 1's last row — stable under inserts, no count(*) needed
-      - 200 application/json
+      err: StatementTimeout
+        - 503 { error: "timeout", retry_after: 1 }
+      ~ AuditLog.write(user_id:, action: "list")   @app/services/audit_log.rb:7
+        # fire-and-forget: a failed audit never fails the read
+      < 200 application/json
         > { data: [...], next_cursor: "eyJjcmVhdGVkX2F0IjoiLi4uIn0=" }
           the cursor is opaque: hand it straight back as ?cursor=
     no:
-      - 403 { error: "forbidden" }
-        ! AuthorizationError
+      token expired:
+        - 401 { error: "token_expired" }
+      else:
+        - 403 { error: "forbidden" }
+          ! AuthorizationError
 `;
 
 const callStack = `# POST v3/checkout — call stack
@@ -58,7 +58,7 @@ POST v3/checkout   @app/controllers/checkout_controller.rb:18
       > Timeout
         charge stays :pending; the webhook settles it
       < :pending
-    - 201 { order_id: order.id }
+    < 201 { order_id: order.id }
 `;
 
 const userFlow = `# Signup — user flow
