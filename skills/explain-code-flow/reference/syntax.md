@@ -15,6 +15,22 @@ Spaces for indentation; a tab is an error. One node per line.
 | `# text` | note attached to the node above |
 | `@user` on its own line | actor |
 
+## Loops, schedules and arrows
+
+None of the three has a marker, because a marker is a rule every reader has to learn. They are words inside the line:
+
+```
+~ sync every connected bank account, daily at 5 AM
+  - loop over every bank account, one at a time
+  - READY → the balance is saved
+  - no match → build one
+  - ~ the process job starts in 30 minutes
+```
+
+- `loop over …` is the only way to say a line repeats. An indent says where a line sits, never how often it runs.
+- A time — `daily at 5 AM`, `30 minutes later`, `every 6 hours` — is the fact, not the cron string that produced it.
+- `→` is text. Write `->` when the keyboard has no arrow; at the **start** of a line `->` is still the legacy alias for `-`, with a hint, so an arrow belongs inside the line.
+
 ## Arms
 
 Reserved: `gate:` (condition), `yes:` / `no:` (its branches), `else:` (catch-all), `err:` (typed failure, `err: CardDeclined`).
@@ -88,7 +104,7 @@ A trailing `@path[:line[:col]]` links the node. The path must contain `/` or `.`
 `/share` counts:
 
 - **steps** — every node line: steps, actors (`@user`), arms (`gate:`, `yes:`), `!`, `~`, `<`, and every `>` line. Arms are also counted in `arms`.
-- **arms** — lines with a `label:`.
+- **arms** — lines with a `label:`. `gate:` counts as a step but not as an arm: a gate names a condition, and its arms are the branches under it.
 - **panels** — `>` openers, nested ones included. Body text is never counted.
 - **notes** — `#` notes; consecutive lines are one.
 

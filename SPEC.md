@@ -235,6 +235,8 @@ status bar names the first offending line.
 ## Design rules that keep it light
 
 1. **One idea per line.** A line is a step, an arm, or an accordion — never two.
+   It is scanned rather than read, so it fits one row: past that, it is prose that
+   happens to be indented, and the accordion next to it is doing nothing.
 2. **Prose lives inside the accordion.** The spine stays scannable; the reasoning
    goes one level down, in the body of the line it explains.
 3. **Name the discriminator.** A branch either names its gate or names its
@@ -243,6 +245,20 @@ status bar names the first offending line.
    what happened, then why. A third level is a signal that the diagram is doing
    a document's job.
 5. **The file must read well unrendered.** That is why `-` stayed.
+6. **A line says what happens, not which call does it.** The effect is the line;
+   the *call* belongs to the `@path:line` anchor or to the body. The entities keep
+   their names — `Expense`, `Recurrence`, `Team` are what a developer already
+   reads — so demote `Expense.from_recurrence(self, date)` and keep `Expense`.
+   A spine of call expressions is code with the indentation of a diagram:
+   readable only to whoever already knows the answer, which is the reader a flow
+   is not written for. Describing an entity instead of naming it — "the expense
+   the recurrence describes" — is the opposite mistake, and the same cost.
+7. **A repeat, a schedule and a cause are words, not markers.**
+   `loop over every bank account`, `runs daily at 5 AM`, `READY → the balance is
+   saved`. Each would need an operator, and an operator for repetition would be a
+   second hierarchy competing with indentation (corollary 3) while an operator
+   for a schedule would be a second table to learn (corollary 5). Spelling them
+   in prose costs the language nothing and keeps the operator table short.
 
 ## Share links
 

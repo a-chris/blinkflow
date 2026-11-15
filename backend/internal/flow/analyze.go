@@ -19,7 +19,8 @@ type Stats struct {
 	// Steps counts node lines, folds included. Panels are not nodes, and
 	// panel bodies are text.
 	Steps int
-	// Arms counts `label:` lines, reserved and free-form.
+	// Arms counts labelled branches: `yes:`, `no:`, `else:`, `err:`, and every
+	// free-form `label:`. `gate:` is its own kind and counts as a step, not an arm.
 	Arms int
 	// Panels counts `>` openers, including nested ones: the field name is the
 	// card's, the language calls the line an accordion.
