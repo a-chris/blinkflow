@@ -9,8 +9,8 @@ import (
 )
 
 func TestTitlePrefersTheDocumentNote(t *testing.T) {
-	meta := og.FromAnalysis(flow.Analysis{FirstNote: "v3/expenses — API flow", FirstStep: "GET v3/expenses"})
-	if meta.Title != "v3/expenses — API flow" {
+	meta := og.FromAnalysis(flow.Analysis{FirstNote: "v3/articles — API flow", FirstStep: "GET v3/articles"})
+	if meta.Title != "v3/articles — API flow" {
 		t.Fatalf("got %q", meta.Title)
 	}
 }
@@ -29,8 +29,8 @@ func TestTitleFallsBackToTheProductName(t *testing.T) {
 }
 
 func TestTitleKeepsOnlyTheFirstLineOfANote(t *testing.T) {
-	meta := og.FromAnalysis(flow.Analysis{FirstNote: "Expenses API\nsecond line, less interesting"})
-	if meta.Title != "Expenses API" {
+	meta := og.FromAnalysis(flow.Analysis{FirstNote: "Articles API\nsecond line, less interesting"})
+	if meta.Title != "Articles API" {
 		t.Fatalf("got %q", meta.Title)
 	}
 }
@@ -38,9 +38,9 @@ func TestTitleKeepsOnlyTheFirstLineOfANote(t *testing.T) {
 func TestDescriptionCountsAndNamesTheGate(t *testing.T) {
 	meta := og.FromAnalysis(flow.Analysis{
 		Stats:     flow.Stats{Steps: 10, Arms: 2, Panels: 4, Notes: 3},
-		FirstGate: "permission expenses.read",
+		FirstGate: "permission articles.read",
 	})
-	want := "10 steps · 2 arms · 4 panels · 3 notes · gate: permission expenses.read"
+	want := "10 steps · 2 arms · 4 panels · 3 notes · gate: permission articles.read"
 	if meta.Description != want {
 		t.Fatalf("got %q, want %q", meta.Description, want)
 	}
@@ -66,8 +66,8 @@ func TestClampCutsAtAWordBoundary(t *testing.T) {
 }
 
 func TestShortValuesAreLeftAlone(t *testing.T) {
-	meta := og.FromAnalysis(flow.Analysis{FirstNote: "Expenses"})
-	if meta.Title != "Expenses" {
+	meta := og.FromAnalysis(flow.Analysis{FirstNote: "Articles"})
+	if meta.Title != "Articles" {
 		t.Fatalf("got %q", meta.Title)
 	}
 }

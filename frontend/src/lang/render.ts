@@ -44,7 +44,7 @@ export function renderFlow(result: ParseResult, options: RenderOptions): HTMLEle
 
   if (result.roots.length === 0) {
     const empty = el('div', 'bf-empty');
-    empty.textContent = 'Nothing to draw yet — start with a line like `- GET /expenses`.';
+    empty.textContent = 'Nothing to draw yet — start with a line like `- GET /articles`.';
     flow.appendChild(empty);
     return flow;
   }

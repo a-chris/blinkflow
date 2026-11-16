@@ -120,7 +120,7 @@ jobs:
             | grep -q '^name: explain-code-flow'
 
           # The encode endpoint: a document in, a link out, no storage.
-          encoded="$(printf 'GET v3/expenses\n  - Database.where(user_id:)\n' \
+          encoded="$(printf 'GET v3/articles\n  - Database.where(author_id:)\n' \
             | curl -fsS -X POST http://127.0.0.1:8080/share \
                 -H 'content-type: text/plain' --data-binary @-)"
           # BLINKFLOW_PUBLIC_ORIGIN is https above, so every link it hands back

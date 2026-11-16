@@ -20,13 +20,13 @@ describe('render', () => {
   });
 
   it('renders an accordion collapsed, showing only its line', () => {
-    const root = renderFlow(parse(['- step', '  > SELECT * FROM expenses', '    WHERE user_id = $1'].join('\n')), options);
+    const root = renderFlow(parse(['- step', '  > SELECT * FROM articles', '    WHERE user_id = $1'].join('\n')), options);
 
     const toggle = root.querySelector<HTMLButtonElement>('.bf-fold-toggle');
     const body = root.querySelector<HTMLElement>('.bf-fold .bf-panel-body');
     expect(toggle).not.toBeNull();
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
-    expect(toggle?.querySelector('.bf-text')?.textContent).toBe('SELECT * FROM expenses');
+    expect(toggle?.querySelector('.bf-text')?.textContent).toBe('SELECT * FROM articles');
     expect(body?.hidden).toBe(true);
     expect(body?.textContent).toContain('WHERE user_id = $1');
   });
@@ -117,19 +117,19 @@ describe('render', () => {
 
   it('links an anchor written on a peek line, without toggling the panel', () => {
     const onAnchorClick = vi.fn();
-    const doc = ['- step', '  > build query  @app/services/get_expenses.rb:12', '    body line'].join('\n');
+    const doc = ['- step', '  > build query  @app/services/list_articles.rb:12', '    body line'].join('\n');
     const root = renderFlow(parse(doc), { ...options, onAnchorClick });
 
     const link = root.querySelector<HTMLAnchorElement>('.bf-fold .bf-anchor')!;
     expect(link).not.toBeNull();
-    expect(link.href).toBe('vscode://file/root/repo/app/services/get_expenses.rb:12:1');
-    expect(link.textContent).toBe('get_expenses.rb:12');
+    expect(link.href).toBe('vscode://file/root/repo/app/services/list_articles.rb:12:1');
+    expect(link.textContent).toBe('list_articles.rb:12');
     expect(root.querySelector('.bf-fold-toggle .bf-text')?.textContent).toBe('build query');
 
     link.click();
     expect(onAnchorClick).toHaveBeenCalledTimes(1);
     expect(onAnchorClick.mock.calls[0][1]).toEqual({
-      path: 'app/services/get_expenses.rb',
+      path: 'app/services/list_articles.rb',
       line: 12,
     });
 
@@ -139,10 +139,10 @@ describe('render', () => {
   });
 
   it('links an anchor on an accordion with nothing inside', () => {
-    const root = renderFlow(parse(['- step', '  > see @app/models/expense.rb:41'].join('\n')), options);
+    const root = renderFlow(parse(['- step', '  > see @app/models/article.rb:41'].join('\n')), options);
     expect(root.querySelector('.bf-fold-toggle')).toBeNull();
     expect(root.querySelector<HTMLAnchorElement>('.bf-node .bf-anchor')!.href).toBe(
-      'vscode://file/root/repo/app/models/expense.rb:41:1',
+      'vscode://file/root/repo/app/models/article.rb:41:1',
     );
   });
 
@@ -210,7 +210,7 @@ describe('render', () => {
   });
 
   it('shows a note chip on an accordion, not only on nodes', () => {
-    const doc = ['- step', '  > SELECT * FROM expenses', '    WHERE user_id = $1', '    # slow at p99'].join('\n');
+    const doc = ['- step', '  > SELECT * FROM articles', '    WHERE user_id = $1', '    # slow at p99'].join('\n');
     const root = renderFlow(parse(doc), options);
     const head = root.querySelector<HTMLElement>('.bf-fold > .bf-main > .bf-panel-head')!;
     const chip = head.querySelector<HTMLButtonElement>('.bf-note')!;
@@ -276,10 +276,10 @@ describe('render', () => {
   });
 
   it('renders document notes above the flow', () => {
-    const root = renderFlow(parse(['# v3/expenses — API flow', '- step'].join('\n')), options);
+    const root = renderFlow(parse(['# v3/articles — API flow', '- step'].join('\n')), options);
     const notes = root.querySelectorAll('.bf-doc-note');
     expect(notes).toHaveLength(1);
-    expect(notes[0].textContent).toBe('v3/expenses — API flow');
+    expect(notes[0].textContent).toBe('v3/articles — API flow');
   });
 
   it('shows an empty state', () => {

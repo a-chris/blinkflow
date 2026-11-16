@@ -1,29 +1,44 @@
-# v3/expenses — API flow
-# click a > to open the detail, click an anchor to jump to source
+# v3/articles — API flow
+# every number on this page was measured on prod, and each hides behind a >
 
-@user
-GET v3/expenses
-  gate: permission expenses.read
+@author
+GET v3/articles
+  gate: permission articles.read
     yes:
-      - Services::GetExpenses.call(user_id)   @app/services/get_expenses.rb:12
-        > AR query builder — clamps per_page   @app/services/get_expenses.rb:34
-          - per_page clamped to 1..100, default 25
-          - cursor = base64 of (created_at, id): no offset pagination
-          - the table is append-heavy, so offsets drift under load
-        - Database.where(user_id:, cursor:, limit:)  @app/models/expense.rb:41
-          # p50 1.2ms on prod, p99 6.1ms — measured 2025-11, 200k rows
-          > SELECT * FROM expenses
-            # the plan is a index scan + sort; 5ms at p99 when the cursor is cold
-            WHERE user_id = $1
-            ORDER BY created_at DESC, id DESC
-            LIMIT 25
-            -- index: expenses_user_id_created_at_idx  ~1.2ms p50
-            > keyset, not OFFSET
-              OFFSET drifts when rows land mid-scan: page 2 would repeat a row
-              the cursor is (created_at, id), so page 2 starts exactly after
-              page 1's last row — stable under inserts, no count(*) needed
-      > 200 application/json
-        { data: [...], next_cursor: "eyJjcmVhdGVkX2F0IjoiLi4uIn0=" }
+      > ListArticles.call(author_id)   @app/services/list_articles.rb:12
+        # the query builder clamps per_page and keeps the cursor opaque
+        - per_page clamped to 1..100, default 25
+        - cursor = base64(published_at, id), never a page number
+        > Database.where(author_id:, cursor:, limit:)   @app/models/article.rb:41
+          # p50 1.2ms, p99 6.1ms — 200k rows, measured 2025-11
+          SELECT id, slug, title, summary, published_at
+          FROM articles
+          WHERE author_id = $1
+            AND (published_at, id) < ($2, $3)
+          ORDER BY published_at DESC, id DESC
+          LIMIT 26
+          -- index: articles_author_published_idx covers WHERE and ORDER BY
+          -- 26, not 25: the extra row says a next page exists, no COUNT(*)
+          > why keyset, not OFFSET
+            OFFSET drifts when an article lands mid-scan: page 2 would repeat it
+            the cursor pins (published_at, id), so page 2 starts exactly after
+            page 1's last row — stable under inserts
+      err: StatementTimeout
+        - 503 { error: "timeout", retry_after: 1 }
+          > the Sentry fingerprint, for whoever is on call
+            QueryCanceled: canceling statement due to statement timeout
+            app/models/article.rb:41:in `load_page'
+            app/services/list_articles.rb:28:in `call'
+            app/controllers/articles_controller.rb:9:in `block in index'
+      ~ ImpressionLog.write(author_id:, action: "list")   @app/services/impression_log.rb:7
+        # fire-and-forget: a dropped impression never fails the read
+      < 200 application/json
+        > { data: [...], next_cursor: "eyJwdWJsaXNoZWRfYXQiOi4uLiJ9" }
+          the cursor is opaque: hand it straight back as ?cursor=
+          X-RateLimit-Limit: 600/min per token, burst 100
     no:
-      - 403 { error: "forbidden" }
-        ! AuthorizationError
+      token expired:
+        - 401 { error: "token_expired" }
+      else:
+        - 403 { error: "forbidden" }
+          ! AuthorizationError

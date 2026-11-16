@@ -13,13 +13,13 @@ import {
 
 const hasCompression = typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
 
-const doc = `# v3/expenses — API flow
+const doc = `# v3/articles — API flow
 
 @user
-GET v3/expenses
-  gate: permission expenses.read
+GET v3/articles
+  gate: permission articles.read
     yes:
-      - Services::GetExpenses.call(user_id)   @app/services/get_expenses.rb:12
+      - Services::ListArticles.call(author_id)   @app/services/list_articles.rb:12
         > AR query builder — clamps per_page, opaque cursor
           - per_page clamped to 1..100, default 25
     no:
@@ -79,17 +79,17 @@ describe.skipIf(!hasCompression)('compression', () => {
 // decoding, the two encoders have drifted — which is what the version prefix is
 // for, and what this test is meant to catch before a user opens a dead link.
 // Regenerate it by POSTing the same document to /share.
-const serverDocument = `# v3/expenses — API flow
+const serverDocument = `# v3/articles — API flow
 
-GET v3/expenses
-  gate: permission expenses.read
+GET v3/articles
+  gate: permission articles.read
     yes:
-      - Services::GetExpenses.call(user_id)   @app/services/get_expenses.rb:12
+      - Services::ListArticles.call(author_id)   @app/services/list_articles.rb:12
         > AR query builder — clamps per_page, opaque cursor
     no:
       - 403 { error: "forbidden" }
 `;
-const serverPayload = 'c1.TI7BSsNAFEX38xWXulFQo9bVLMQuSnEn6j5MMrdhYJqZvpepFhH8CL_QLxFDS7p7cM87nDPs5hU_Mnul4vf7B4vnJ6xjejdmtXw7XQ3QuYEWmbIJqiH1OG7XQucNAOypdjyAK7xSdqGlWrvisDyyrYvxvCilDv4CwKPLudIDWnUc6knb2Nu7gw54wOIF20LZoykhespY3Ea3yfqfVWfX8RIpu20h2iKaZPzu0xR1fzPHJyiSxGK2TtIE79nP8GX-BgA';
+const serverPayload = 'c1.TI5BSgNBEEX3c4pP3Cioo8ZVL8RZiAguRN0PNd2VWNCZ7lR1R4IIHsITehJxSIi7gv_q8Y6wmbekRXxkw8_XN7qnByxiem-a-7vX_2sDLKmwQ2ZdiZmkEfvtXJlCAwBbNjcdwBleWDfi2Zx7FCvdHvYU4zHV8pa0l3AC4JZybm1Ht1Gs9Af14C6vdkrgBt0z1pV1i6FKDKxTtY-0yvaX1mda8ilSpnVl-KqWdPoe0yHs-mKOD7BqUofZIukgIfA4w2fzOwA';
 
 describe.skipIf(!hasCompression)('payloads built by the server', () => {
   it('decodes a payload this module did not produce', async () => {

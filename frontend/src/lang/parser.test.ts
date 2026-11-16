@@ -10,10 +10,10 @@ describe('structure', () => {
   it('builds the tree from indentation', () => {
     const doc = [
       '@user',
-      'GET v3/expenses',
-      '  gate: permission expenses.read',
+      'GET v3/articles',
+      '  gate: permission articles.read',
       '    yes:',
-      '      - Services::GetExpenses.call(user_id)',
+      '      - Services::ListArticles.call(author_id)',
       '        - Database.where(user_id:)',
       '    no:',
       '      - 403 { error: "forbidden" }',
@@ -25,12 +25,12 @@ describe('structure', () => {
     expect(result.roots[0].text).toBe('@user');
 
     const get = result.roots[1];
-    expect(get.text).toBe('GET v3/expenses');
+    expect(get.text).toBe('GET v3/articles');
     expect(get.children).toHaveLength(1);
 
     const gate = get.children[0];
     expect(gate.kind).toBe('gate');
-    expect(gate.text).toBe('permission expenses.read');
+    expect(gate.text).toBe('permission articles.read');
     expect(gate.children.map((c) => c.label)).toEqual(['yes', 'no']);
 
     const yes = gate.children[0];
@@ -49,7 +49,7 @@ describe('structure', () => {
   it('keeps text lines raw, including lines that look like bullets', () => {
     const doc = [
       '- Database.where(...)',
-      '  > SELECT * FROM expenses',
+      '  > SELECT * FROM articles',
       '    WHERE user_id = $1',
       '    - this is a bullet, not a step',
       '- next step',
@@ -60,7 +60,7 @@ describe('structure', () => {
 
     expect(result.nodes).toHaveLength(3);
     expect(query.kind).toBe('fold');
-    expect(query.text).toBe('SELECT * FROM expenses');
+    expect(query.text).toBe('SELECT * FROM articles');
     expect(bodyOf(query.fold!)).toEqual(['WHERE user_id = $1', '- this is a bullet, not a step']);
   });
 
@@ -72,19 +72,19 @@ describe('structure', () => {
   it('extracts an anchor from a panel peek line', () => {
     const doc = [
       '- step',
-      '  > build_query — clamps per_page   @app/services/get_expenses.rb:34',
+      '  > build_query — clamps per_page   @app/services/list_articles.rb:34',
       '    body line',
     ].join('\n');
     const accordion = parse(doc).nodes[1];
     expect(accordion.text).toBe('build_query — clamps per_page');
-    expect(accordion.anchor).toEqual({ path: 'app/services/get_expenses.rb', line: 34 });
+    expect(accordion.anchor).toEqual({ path: 'app/services/list_articles.rb', line: 34 });
     expect(bodyOf(accordion.fold!)).toEqual(['body line']);
   });
 
   it('extracts an anchor from a peek-only panel', () => {
-    const accordion = parse(['- step', '  > see @app/models/expense.rb'].join('\n')).nodes[1];
+    const accordion = parse(['- step', '  > see @app/models/article.rb'].join('\n')).nodes[1];
     expect(accordion.text).toBe('see');
-    expect(accordion.anchor).toEqual({ path: 'app/models/expense.rb' });
+    expect(accordion.anchor).toEqual({ path: 'app/models/article.rb' });
   });
 
   it('leaves a peek without an anchor untouched', () => {
@@ -106,9 +106,9 @@ describe('markers', () => {
   });
 
   it('treats an unmarked line as a step, so an entry point needs no dash', () => {
-    const result = parse(['GET v3/expenses', '  - list them'].join('\n'));
+    const result = parse(['GET v3/articles', '  - list them'].join('\n'));
     expect(result.roots[0].kind).toBe('step');
-    expect(result.roots[0].text).toBe('GET v3/expenses');
+    expect(result.roots[0].text).toBe('GET v3/articles');
     expect(result.issues).toEqual([]);
   });
 
@@ -216,8 +216,8 @@ describe('notes', () => {
   });
 
   it('treats notes before any node as document notes', () => {
-    const result = parse(['# v3/expenses — API flow', '# a second line', '', '- step'].join('\n'));
-    expect(result.notes.map((n) => n.text)).toEqual(['v3/expenses — API flow\na second line']);
+    const result = parse(['# v3/articles — API flow', '# a second line', '', '- step'].join('\n'));
+    expect(result.notes.map((n) => n.text)).toEqual(['v3/articles — API flow\na second line']);
     expect(result.nodes[0].notes).toEqual([]);
   });
 
@@ -311,11 +311,11 @@ describe('nested panels', () => {
   });
 
   it('supports an anchor on a nested peek', () => {
-    const doc = ['- step', '  > outer', '    > SQL  @app/models/expense.rb:41', '      SELECT 1'].join('\n');
+    const doc = ['- step', '  > outer', '    > SQL  @app/models/article.rb:41', '      SELECT 1'].join('\n');
     const outer = parse(doc).nodes[1].fold!;
     const inner = outer.body.find((i) => i.kind === 'panel');
     expect(inner?.kind === 'panel' && inner.panel.anchor).toEqual({
-      path: 'app/models/expense.rb',
+      path: 'app/models/article.rb',
       line: 41,
     });
   });
@@ -546,10 +546,10 @@ describe('source order', () => {
 
 describe('anchors', () => {
   it('extracts path, line and column from the end of a line', () => {
-    const result = parse('- Services::GetExpenses.call   @app/services/get_expenses.rb:12:4');
+    const result = parse('- Services::ListArticles.call   @app/services/list_articles.rb:12:4');
     const node = result.nodes[0];
-    expect(node.text).toBe('Services::GetExpenses.call');
-    expect(node.anchor).toEqual({ path: 'app/services/get_expenses.rb', line: 12, column: 4 });
+    expect(node.text).toBe('Services::ListArticles.call');
+    expect(node.anchor).toEqual({ path: 'app/services/list_articles.rb', line: 12, column: 4 });
   });
 
   it('works without a line number', () => {

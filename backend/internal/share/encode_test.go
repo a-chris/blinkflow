@@ -113,7 +113,7 @@ func TestEncodeIsSmallerThanTheDocumentWhenItRepeats(t *testing.T) {
 func TestEncodeOutputFitsTheEncodedCeiling(t *testing.T) {
 	// MaxEncoded is the budget the server uses for request-line headers, so an
 	// encoder that can exceed it would produce links the server itself rejects.
-	document := strings.Repeat("GET v3/expenses\n", 100)
+	document := strings.Repeat("GET v3/articles\n", 100)
 	payload, err := share.Encode(document)
 	if err != nil {
 		t.Fatalf("encode: %v", err)
@@ -126,7 +126,7 @@ func TestEncodeOutputFitsTheEncodedCeiling(t *testing.T) {
 }
 
 func TestEncodeDecodesBackUnderTheSameLimit(t *testing.T) {
-	document := strings.Repeat("GET v3/expenses\n", 10)
+	document := strings.Repeat("GET v3/articles\n", 10)
 	payload, err := share.Encode(document)
 	if err != nil {
 		t.Fatalf("encode: %v", err)

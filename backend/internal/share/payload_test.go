@@ -34,7 +34,7 @@ func encode(t *testing.T, prefix, document string) string {
 	return prefix + base64.RawURLEncoding.EncodeToString(raw)
 }
 
-const document = "# v3/expenses — API flow\n\nGET v3/expenses\n  gate: permission expenses.read\n"
+const document = "# v3/articles — API flow\n\nGET v3/articles\n  gate: permission articles.read\n"
 
 func TestDecodeRoundTrip(t *testing.T) {
 	for _, prefix := range []string{share.PrefixDeflate, share.PrefixPlain} {

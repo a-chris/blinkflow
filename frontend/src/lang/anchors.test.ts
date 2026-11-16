@@ -19,23 +19,23 @@ describe('resolvePath', () => {
 });
 
 describe('buildOpenUrl', () => {
-  const anchor = { path: 'app/services/get_expenses.rb', line: 12, column: 4 };
+  const anchor = { path: 'app/services/list_articles.rb', line: 12, column: 4 };
 
   it('builds vscode, cursor and zed deep links', () => {
     expect(buildOpenUrl('vscode', BASE, anchor)).toBe(
-      'vscode://file/home/dev/myapp/app/services/get_expenses.rb:12:4',
+      'vscode://file/home/dev/myapp/app/services/list_articles.rb:12:4',
     );
     expect(buildOpenUrl('cursor', BASE, anchor)).toBe(
-      'cursor://file/home/dev/myapp/app/services/get_expenses.rb:12:4',
+      'cursor://file/home/dev/myapp/app/services/list_articles.rb:12:4',
     );
     expect(buildOpenUrl('zed', BASE, anchor)).toBe(
-      'zed://file/home/dev/myapp/app/services/get_expenses.rb:12:4',
+      'zed://file/home/dev/myapp/app/services/list_articles.rb:12:4',
     );
   });
 
   it('builds a sublime link', () => {
     expect(buildOpenUrl('sublime', BASE, anchor)).toBe(
-      'subl://open?url=file:///home/dev/myapp/app/services/get_expenses.rb&line=12',
+      'subl://open?url=file:///home/dev/myapp/app/services/list_articles.rb&line=12',
     );
   });
 
@@ -53,7 +53,7 @@ describe('buildOpenUrl', () => {
 
 describe('displayRef', () => {
   it('shows the basename with the line number', () => {
-    expect(displayRef({ path: 'app/services/get_expenses.rb', line: 12 })).toBe('get_expenses.rb:12');
-    expect(displayRef({ path: 'app/services/get_expenses.rb' })).toBe('get_expenses.rb');
+    expect(displayRef({ path: 'app/services/list_articles.rb', line: 12 })).toBe('list_articles.rb:12');
+    expect(displayRef({ path: 'app/services/list_articles.rb' })).toBe('list_articles.rb');
   });
 });
