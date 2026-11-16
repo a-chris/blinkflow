@@ -33,7 +33,7 @@ That link *is* the document: deflate-compressed into the URL, stored nowhere. It
 
 ![The playground's share dialog beside the card that its link unfurls into: Blinkflow, POST v3/checkout — call stack, 15 steps · 1 arm · 4 panels · 3 notes](docs/card.png)
 
-![One accordion open inside another: Services::GetExpenses.call open on its steps, and Database.where open inside it on the SQL query, with a note chip and the source anchors beside the lines](docs/detail.png)
+![One accordion open inside another: ListArticles.call open on its steps, and Database.where open inside it on the SQL query, with a note chip and the source anchors beside the lines](docs/detail.png)
 
 The instructions an agent follows to write a flow, post it, and answer with the link are in [`skills/`](./skills/). Drop them into the agent you already use.
 
@@ -42,14 +42,14 @@ The instructions an agent follows to write a flow, post it, and answer with the 
 A flow is written as plain text. Indentation is the tree, and every operator has exactly one job:
 
 ```
-GET v3/expenses
-  gate: permission expenses.read
+GET v3/articles
+  gate: permission articles.read
     yes:
-      - Services::GetExpenses.call(user_id)   @app/services/get_expenses.rb:12
-        # the AR query builder clamps per_page and keeps the cursor opaque
-        > Database.where(user_id:, cursor:, limit:)
-          SELECT * FROM expenses
-          WHERE user_id = $1
+      > ListArticles.call(author_id)   @app/services/list_articles.rb:12
+        # the query builder clamps per_page and keeps the cursor opaque
+        > Database.where(author_id:, cursor:, limit:)
+          SELECT * FROM articles
+          WHERE author_id = $1
           LIMIT 25
     no:
       - 403 { error: "forbidden" }
@@ -129,14 +129,14 @@ curl -sS -X POST https://blinkflow.live/share \
     "simple": "https://blinkflow.live/#c1.…"
   },
   "payload": "c1.…",
-  "title": "v3/expenses — API flow",
-  "description": "10 steps · 2 arms · 4 panels · 2 notes · gate: permission expenses.read",
-  "steps": 10,
+  "title": "GET v3/articles",
+  "description": "5 steps · 2 arms · 2 panels · 1 note · gate: permission articles.read",
+  "steps": 5,
   "arms": 2,
-  "panels": 4,
-  "notes": 2,
-  "source_bytes": 1242,
-  "payload_chars": 934
+  "panels": 2,
+  "notes": 1,
+  "source_bytes": 383,
+  "payload_chars": 331
 }
 ```
 

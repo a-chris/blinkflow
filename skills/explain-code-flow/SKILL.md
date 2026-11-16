@@ -8,49 +8,98 @@ when_to_use: "explain this code, how does this work, walk me through, trace this
 
 Deliverable: one link.
 
+## The shape
+
+```
+# <what the flow does, in plain words>
+
+<what starts it: @cron, @user, @web — bare, alone on the line>
+~ <the job or the step> — <when it runs>   @path:line
+  - <what it does, one clause, under 60 characters>   @path:line
+    > <the step that carries the detail>   @path:line
+      - <one fact>
+      - <one fact>
+  err:
+    ! <what the failure leaves behind>
+- <the next step>   @path:line
+```
+
+The first line is the title, and it is the only `#` at the left margin. One line, then the spine. No plan, no preamble, no second title: the card takes its title from that line, so anything you put above it becomes the headline.
+
+The document follows the work, not the files. A file the work passes through is an `@path:line` on the line that touches it, never a heading. Three files are three anchors, not three sections.
+
+Several things can start the same work: a cron, a save callback, a retry. The spine follows the one the reader asked about. Every other trigger gets a line of its own, in the order it fires, saying when. Never nest one trigger inside another, and two triggers that run the same work share one copy of it: the second is a line pointing at the first.
+
+A trigger line says what fires it, in words. Write `~ saving an Article schedules a reindex in 1 minute`, not the method that does the scheduling.
+
+```
+@cron
+~ PublishCronJob — daily at 4 AM   @config/initializers/good_job.rb:31
+~ a saved Article runs the same publish, at once   @app/models/article.rb:75
+  - loop over every scheduled Article   @app/jobs/publish_cron_job.rb:5
+```
+
+## The markers
+
+A line that starts with none of these is code, and code goes in the anchor or in a body. One marker per line: `- ~ text` is not an async step, it is two markers with nothing to say.
+
+| marker               | carries                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| `# text`             | the title, and the reasons. Hidden until asked.                                                     |
+| `- text`             | a step                                                                                              |
+| `> text`             | a step whose detail hides inside it                                                                 |
+| `~ text`             | anything async, with its timing                                                                     |
+| `@word` alone        | what starts the flow: `@web` an HTTP request, `@user` a person, `@cron` a schedule, `@model` a save |
+| `…  @path:line`      | the source, at the end of a line. No anchor, no line.                                               |
+| `gate:` `yes:` `no:` | a decision and its two arms                                                                         |
+| `err:` then `!`      | the failure arm                                                                                     |
+| `< text`             | what the caller gets back                                                                           |
+| `→` `->`             | logic that fits in one clause: `due → the Article goes live`                                        |
+
+## Decisions and failures
+
+`gate:` is a question whose answers are `yes:` and `no:`. Each arm holds what happens, never a restatement of the condition, and neither arm is a failure:
+
+```
+  gate: the cache already has the rendered HTML
+    yes:
+      - the Article is served, status ready
+    no:
+      - status rendering_pending
+```
+
+`err:` is for what the code treats as a failure: a raise it rescues, a status it marks failed. The ordinary `no:` branch of a decision is not an `err:`.
+
+## Crossings
+
+A contact point gets a line of its own, and the line says which store, which side:
+
+| crossing       | the line                                           |
+| -------------- | -------------------------------------------------- |
+| database read  | `Database.where(Article by status, publish_at)`    |
+| database write | `Database.insert(Article)`, fields in the panel    |
+| HTTP out       | `POST cdn.example.com/purge, /articles/*`          |
+| HTTP in        | `POST v3/articles`                                 |
+| async          | `~ SearchIndexRetryJob — in 1 minute`              |
+| response       | `< 201 { id:, status: "published" }`               |
+
+## Six rules
+
+1. **Write only what a file you opened says.** Every wait, number and call on a line is a fact you read. The examples below show the kind of words a line uses. Their numbers are not facts about your flow.
+2. **Write the effect, not the call.** `loop over every scheduled Article`, not `Article.find_each`. Keep the nouns: `Article` and `Author` are what the reader already reads. Demote the call to the anchor.
+3. **Stay under 60 characters, one clause.** Past that the line is prose that has not moved down a level. The reason becomes a `#` note, the mechanics become a `-` bullet.
+4. **Timing and repeats are words, taken from the source.** `0 4 * * *` is `daily at 4 AM`; `set(wait: 1.minute)` is `in 1 minute`. Every `.each` or `find_each` in a file you anchored keeps a `loop over every …` line: drop the loop and the steps under it read as if they happen once. A job started by another line is not an actor; it is `~` under the line that starts it.
+5. **Name the boundaries.** The database, an HTTP call and who is on the other end, anything async. The rule holds inside a body: a `-` bullet says what happens, and the class name stays on the anchor. `0 */6 * * *` is never a line; that is `every 6 hours`.
+6. **Keep the spine to about a dozen lines.** Past 15 you are drawing the call graph with a flow's indentation.
+
 ## Procedure
 
-1. Pick one flow — one request, one job, one topic, one command. If the user named one, use it. Otherwise ask which. Then decide its **scope**, because the scope decides how much each line may carry. **Broad** — several services, HTTP hops, queues, a journey across the system: the reader wants the shape, so stay at effect level and spend detail only on the crossings, the expensive branch and the exit. **Narrow** — one job, one model, one path: the reader asked about exactly this, so the mechanics are the answer — a panel per step, the conditionals named, the edge case included. A narrow flow drawn lightly and a broad flow drawn deeply are the same failure: neither is what was asked for.
-2. Read the source. List, in order: the entry point — **and when it runs**, if anything schedules it — the decision that branches, **what repeats**, every contact point, the exit.
-3. Write only calls you saw in the source. Do not infer a call.
-4. Write what the line *does*, and only then what carries it. Every line answers "what is different because this happened?" — not "which method runs?".
-
-| write this | not this |
-|---|---|
-| `loop over every BankAccount linked to a Team` | `BankAccount.find_each` |
-| `create the Expense record for that occurrence` | `create the expense the Recurrence describes` |
-| `ask the bank for the Team's transactions` | `BankAccounts::GetTransactions.call` |
-| `~ the process job starts in 30 minutes` | `BankTransactionsProcessJob.set(wait: 30.minutes)` |
-| `runs daily at 5 AM` | `cron: "0 5 * * *"` |
-| `READY → the balance is saved` | `READY — the balance is saved` |
-
-   - The identifier is not dropped, it is demoted: into the anchor (`@app/services/…rb:12`) or into the accordion body. A spine of class names is code with a diagram's indentation, and the reader has to translate every line before the flow exists.
-   - **A line is scanned, not read.** Under ~60 characters, one clause. The reason goes in a `#` note, the mechanics in a `-` bullet one level down. A line that will not fit is detail that has not moved yet; a spine of full sentences is a wall of text with a tree drawn on top.
-   - **Entities keep their names.** `Expense`, `Recurrence`, `Team`, `Sheet` are already plain English to whoever reads the code, so the line uses them as they are. What gets demoted is the call — `Expense.from_recurrence(self, date).save!` — never the noun.
-   - Three things still get named on the line, because the reader would not guess them: **the database** (which store, read or write), **an HTTP call** (who is on the other end), and **anything async** (`~`, a queue, a delay). Meaning is not a licence to lose the boundary.
-   - When the logic fits in one line, write it as an arrow: `no match → build one`, `3 days' drift → still matches`. `->` where the keyboard has no arrow.
-   - A line that repeats says `loop`; a line that runs on a schedule says when — `daily at 5 AM`, `30 minutes after the sync`, `every 6 hours`. The language has no marker for either, so the word is the marker.
-5. A step that carries implementation detail — a service, a command, a job — is written as an accordion: start the line with `>` instead of `-`, and the line itself is the accordion; the line says the effect, and the body holds the identifier, the numbers and the mechanics as one `-` fact each. The same spelling works as the first child of a step, where no sibling precedes it, and as the first line of a document when the flow starts with a block that is not a step — a transcript, a payload, a schema. Never write a plain step and hang its detail underneath: that draws two elements where the reader needs one. A step that needs sub-steps stays a plain line, and its own facts become `#` notes. A query inside an accordion still names its store — `Database.where(user_id:)`, `SELECT … FROM expenses`; a bare `find_by …` reads as an internal call and hides the database.
-6. Add a `#` note only for a reason: an invariant, a measured number, a gotcha.
-7. Draw every contact point as its own line:
-
-| crossing | line |
-|---|---|
-| HTTP in | `POST v3/checkout` |
-| HTTP out | `GET inventory.internal/stock` |
-| database read | `Database.where(user_id:, cursor:)` |
-| database write | `Database.insert(order)` — list the writes in the accordion body |
-| Kafka produce | `~ produce checkout.placed` |
-| Kafka consume | `~ consume checkout.placed` as the entry point |
-| job or queue | `~ CheckoutJob starts in 30 minutes` |
-| cache | `read the cache: user:<id>, 23h` |
-| third party | `charge the card → Stripe` |
-| response | `< 201 { id:, status: "pending" }` |
-
-8. Put an irreversible step in a note: a payment, an email, a delete, a published event.
-9. Add `@path:line` only for a file and line you opened. If you did not open it, omit it.
-10. Save the document as `flow.lg`.
-11. POST it:
+1. Read the entry point and every file it reaches. List, in order: the entry and when it runs, the branch, what repeats, each crossing, the exit.
+2. Draw the spine from the shape above, one line per effect.
+3. Anchor each line as you write it, only to files you opened.
+4. Move the mechanics into `>` bodies until every line is under 60 characters.
+5. Save it as `flow.lg`, run the Checks, and fix every line they print.
+6. POST it:
 
 ```bash
 curl -sS -o /tmp/flow.json -w '%{http_code}' -X POST https://blinkflow.live/share \
@@ -59,29 +108,52 @@ curl -sS -o /tmp/flow.json -w '%{http_code}' -X POST https://blinkflow.live/shar
 
 `--data-binary`, not `-d`: `-d` strips newlines, and newlines are the structure.
 
-12. Read the status. On `400` the body is empty or the mode is wrong; on `413` the document is over the size limit. Report the status and the `error` field, then stop.
-13. On `200`, run these against `/tmp/flow.json`:
-
-```bash
-grep -o 'https://blinkflow\.live[^"]*' /tmp/flow.json | head -1   # the link; empty means something is wrong
-grep -q '"panels":0' /tmp/flow.json && echo "nothing collapses — start the lines that carry detail with >"
-grep -Eq '"title":"[^"]*[_:.#]' /tmp/flow.json && echo "bare identifier — rewrite line 1 in plain words"
-sed 's/@[^ ]*//' flow.lg | awk 'length > 62 {print NR": "length" chars"}'   # wraps: the detail has not moved down yet
-```
-
-14. Write the link to a file, and hand over the file or the command that copies it:
+7. Read the status. On `400` the body is empty or the mode is wrong; on `413` the document is over the size limit. Report the status and the `error` field, then stop.
+8. Write the link to a file, and hand over the file or the command that copies it:
 
 ```bash
 python3 -c 'import json;print(json.load(open("/tmp/flow.json"))["links"]["simple"])' > /tmp/flow.url
 wc -c < /tmp/flow.url        # 900–2000 characters: too long to retype, long enough to break once
 ```
 
-    A payload is a compressed document. One dropped or swapped character does not look wrong — it decodes to nothing and the reader is told the link is damaged or from another version, which reads as your bug. So: copy the string out of the file, or reply with `pbcopy < /tmp/flow.url` (or the share dialog's short carrier) instead of the link itself. Never type it, never continue it by halves, and never reformat it across lines.
-15. Reply with `"title"`, then the link or the command, then at most one sentence pointing at the part that matters.
+    The payload is a compressed document. Drop or swap one character and nothing looks wrong: it decodes to nothing, and the reader is told the link is damaged or from another version, which reads as your bug. Copy the string out of the file, or reply with `pbcopy < /tmp/flow.url`. Never type it, never finish one by halves, never reformat it across lines.
+
+9. Reply with the `"title"`, then the link or `pbcopy < /tmp/flow.url`, then at most one sentence pointing at the part that matters.
+
+## Checks
+
+Run these against `flow.lg`. What they print is what to fix. No output is a pass.
+
+```bash
+# code on a line, where the effect has not been written: a call, a block, a pseudocode
+# `if x:` or `else:`. The word "if" inside a sentence is fine, the reader reads sentences.
+# What must not appear is the line the code was copied from
+grep -nE '^[[:space:]]*[-~>]' flow.lg | grep -E '(\.call\(|do \||\breturn\b|^[[:space:]]*[-~>] *if |\belsif\b|\belse:?$|\bend\b|[a-z_]+ = )'
+# two markers on one line: neither one means anything after that
+grep -nE '^[[:space:]]*[-~>!<][[:space:]]+[-~>!<][[:space:]]' flow.lg
+# the title is the first line and the only one at the left margin: no plan, no preamble
+grep -cE '^# ' flow.lg
+# a trigger line written twice: the document is repeating itself
+grep -E '^[[:space:]]*~' flow.lg | sort | uniq -d
+# every loop in an anchored file (run from the repo root): each one needs a line that
+# says it repeats. The loop lost most often is the one around the steps that follow
+grep -oE '@[^ :]+' flow.lg | tr -d '@' | sort -u | sed 's/:.*//' | xargs grep -nE '\.(each|find_each)\b' 2>/dev/null
+# an actor with arguments: an actor line is a bare @word, the schedule is words below it
+grep -nE '^@[^[:space:]]*[^[:alnum:]._-]' flow.lg
+# more spine lines than a flow has steps: the call graph is showing through
+grep -cE '^[[:space:]]*[-~>]' flow.lg
+# a number nobody can check: a top-level line with no anchor. In a body the panel's
+# anchor carries it
+grep -nE '^[[:space:]]{0,2}[-~>].*[0-9]+ *(ms|s|min|minutes|hours|seconds|%)' flow.lg | grep -v '@'
+# past one row of text: detail that has not moved down a level
+sed 's/@[^ ]*//' flow.lg | awk 'length > 62 {print NR": "length" chars"}'
+```
+
+A check that fails means a fresh attempt from the source, not a sentence added to the document.
 
 ## Worked example
 
-Document — a Rails checkout, at the default level: the effect on the line, the identifier one level down.
+Document — a Rails checkout: the effect on the line, the identifier one level down.
 
 ```
 # Checkout — one charge, one order
@@ -97,7 +169,7 @@ POST v3/checkout
         - Database.insert(order, line items, reserved stock)
       > charge the card → Stripe   @lib/stripe/charge.rb:9
         # the only irreversible step: a retry reuses the idempotency key
-        - 900ms p99, 30s timeout, one retry
+        - one request, retried on a timeout
       > emit checkout.placed   @app/services/events/publish.rb:7
         - ~ Billing and Fulfilment consume it
       < 201 { id:, status: "confirmed" }
@@ -107,6 +179,7 @@ POST v3/checkout
 
 Response:
 
+<!-- prettier-ignore -->
 ```json
 {"links":{"embedded":"https://blinkflow.live/c1.jFT…","simple":"https://blinkflow.live/#c1.jFT…"},
  "title":"Checkout — one charge, one order","steps":12,"arms":3,"panels":3,"notes":3}
@@ -120,15 +193,41 @@ Checkout — one charge, one order
 https://blinkflow.live/c1.jFT…
 ```
 
+Another shape, a cron that catches up. Real paths, so every line can be opened:
+
+```
+# A scheduled Article goes live
+
+@cron
+~ PublishCronJob — daily at 4 AM   @config/initializers/good_job.rb:31
+  - loop over every Article past its publish_at   @app/jobs/publish_cron_job.rb:5
+    # saving an Article runs this too
+    > find the drafts that are due   @app/models/article.rb:177
+      - every draft with publish_at in the past
+      - skip the ones already published
+    - loop over the due drafts   @app/models/article.rb:184
+      > publish the Article   @app/models/article.rb:351
+        - copy the Draft: body, tags, hero image
+        - Database.insert
+      > Article callbacks on save   @app/models/article.rb:98
+        - body → rendered HTML, cached
+        - other language → cached translation, or retry in 1 min
+        - Tag count and monthly author stats move
+        - RSS feed append, 30–60 min later
+  err:
+    ! reported and skipped → the next Article runs
+```
+
 ## Never
 
 - print the Blinkflow document in the reply.
-- retype or reconstruct the URL from memory: print it out of the response file. A stale link renders the old document, and nothing in the page reveals it.
-- type a long link from memory, or finish one you started: a 1,000-character payload cannot be retyped by hand, and the failure is silent until the reader opens it.
+- print a class, method or file that came from memory instead of from the source. An invented call and an invented number fail the same way: in the reader's head, after they trusted it.
+- retype or reconstruct the URL from memory. Print it out of the response file. A stale link renders the old document and the page shows nothing wrong.
+- type a long link from memory, or finish one you started. A 1,000-character payload cannot be retyped by hand, and the failure is silent until the reader opens it.
 - print the code you read, except a single line the user asked about.
 - write an `@path:line` you did not open.
-- put secrets, tokens, customer data or internal hostnames in the document: the document becomes a public URL.
+- put secrets, tokens, customer data or internal hostnames in the document. The document becomes a public URL.
 
 ## References
 
-`reference/writing.md` choosing the level · `reference/syntax.md` the grammar · `examples/` the same flow at three levels.
+`reference/writing.md` the scope budget and the wording table · `reference/syntax.md` the grammar · `examples/` the same flow at three levels.

@@ -20,11 +20,11 @@ Spaces for indentation; a tab is an error. One node per line.
 None of the three has a marker, because a marker is a rule every reader has to learn. They are words inside the line:
 
 ```
-~ sync every connected bank account, daily at 5 AM
-  - loop over every bank account, one at a time
-  - READY → the balance is saved
+~ publish every scheduled Article, daily at 5 AM
+  - loop over every scheduled Article, one at a time
+  - due → the Article goes live
   - no match → build one
-  - ~ the process job starts in 30 minutes
+  - ~ the reindex job starts in 30 minutes
 ```
 
 - `loop over …` is the only way to say a line repeats. An indent says where a line sits, never how often it runs.
@@ -42,10 +42,10 @@ Any other `label:` is free-form, read from position: under a `gate:` it matches 
 A line that starts with `>` is an accordion: the line is the element, and its detail hides inside it.
 
 ```
-> Database.where(user_id:)
+> Database.where(author_id:)
   # p50 1.2ms, p99 6.1ms
-  SELECT * FROM expenses
-  WHERE user_id = $1
+  SELECT * FROM articles
+  WHERE author_id = $1
   LIMIT 25
 ```
 

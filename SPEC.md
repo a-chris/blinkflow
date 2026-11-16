@@ -11,15 +11,15 @@ where **indentation is the only geometry**. You write a spine of lines, add a
 tree with collapsed detail and click-through source links.
 
 ```
-GET v3/expenses
-  gate: permission expenses.read
+GET v3/articles
+  gate: permission articles.read
     yes:
-      > Services::GetExpenses.call(user_id)   @app/services/get_expenses.rb:12
+      > ListArticles.call(author_id)   @app/services/list_articles.rb:12
         - AR query builder clamps per_page, cursor is opaque
-        > Database.where(user_id:, cursor:, limit:)
-          SELECT * FROM expenses
-          WHERE user_id = $1
-          ORDER BY created_at DESC, id DESC
+        > Database.where(author_id:, cursor:, limit:)
+          SELECT * FROM articles
+          WHERE author_id = $1
+          ORDER BY published_at DESC, id DESC
           LIMIT 25
     no:
       - 403 { error: "forbidden" }
@@ -31,7 +31,7 @@ Three zoom levels, which is the whole point:
 |---|---|---|
 | spine | indentation + markers | grasp the flow |
 | accordion | click a `>` line for SQL, notes, implementation detail | point at the interesting part |
-| source | click `expenses.rb:12` → opens your editor at that line | read the real code |
+| source | click `list_articles.rb:12` → opens your editor at that line | read the real code |
 
 ## Grammar
 
@@ -82,10 +82,10 @@ A line that starts with `>` is an **accordion**: the line itself is the element,
 and its detail hides inside it.
 
 ```
-> Database.where(user_id:)
+> Database.where(author_id:)
   # p50 1.2ms, p99 6.1ms
-  SELECT * FROM expenses
-  WHERE user_id = $1
+  SELECT * FROM articles
+  WHERE author_id = $1
   LIMIT 25
 ```
 
@@ -99,7 +99,7 @@ note on the accordion, anything else is raw text.
 - The line renders even when the accordion is closed, so a closed accordion
   still says what is inside.
 - The line can carry its own source anchor (`> built by \`build_query\`
-  @app/services/get_expenses.rb:34`). It renders as a link beside the toggle, so
+  @app/services/list_articles.rb:34`). It renders as a link beside the toggle, so
   clicking it opens the file instead of expanding the accordion.
 - The body is **raw text**: no parsing, no escaping. SQL, stack traces, prose,
   bullet lists, shell transcripts — anything.
@@ -147,9 +147,9 @@ gate: authenticated
 **Accordions nest.** A `>` inside a body opens an accordion inside that body:
 
 ```
-- Database.where(user_id:)
-  > SELECT * FROM expenses
-    WHERE user_id = $1
+- Database.where(author_id:)
+  > SELECT * FROM articles
+    WHERE author_id = $1
     LIMIT 25
     > keyset, not OFFSET
       OFFSET drifts when rows land mid-scan
@@ -174,12 +174,12 @@ because only `>` changed meaning inside bodies.
 ### Notes
 
 ```
-- Database.where(user_id:)
+- Database.where(author_id:)
   # p50 1.2ms on prod, p99 6.1ms — measured 2025-11
 
-  > SELECT * FROM expenses
+  > SELECT * FROM articles
     # index scan + sort; 5ms at p99 when the cursor is cold
-    WHERE user_id = $1
+    WHERE author_id = $1
 ```
 
 A note attaches to the nearest **component** above it at the same or a shallower
@@ -247,15 +247,15 @@ status bar names the first offending line.
 5. **The file must read well unrendered.** That is why `-` stayed.
 6. **A line says what happens, not which call does it.** The effect is the line;
    the *call* belongs to the `@path:line` anchor or to the body. The entities keep
-   their names — `Expense`, `Recurrence`, `Team` are what a developer already
-   reads — so demote `Expense.from_recurrence(self, date)` and keep `Expense`.
+   their names — `Article`, `Draft`, `Author` are what a developer already
+   reads — so demote `Article.from_draft(self, at:)` and keep `Article`.
    A spine of call expressions is code with the indentation of a diagram:
    readable only to whoever already knows the answer, which is the reader a flow
-   is not written for. Describing an entity instead of naming it — "the expense
-   the recurrence describes" — is the opposite mistake, and the same cost.
+   is not written for. Describing an entity instead of naming it — "the article
+   the draft describes" — is the opposite mistake, and the same cost.
 7. **A repeat, a schedule and a cause are words, not markers.**
-   `loop over every bank account`, `runs daily at 5 AM`, `READY → the balance is
-   saved`. Each would need an operator, and an operator for repetition would be a
+   `loop over every scheduled Article`, `runs daily at 5 AM`, `due → the Article
+   goes live`. Each would need an operator, and an operator for repetition would be a
    second hierarchy competing with indentation (corollary 3) while an operator
    for a schedule would be a second table to learn (corollary 5). Spelling them
    in prose costs the language nothing and keeps the operator table short.
